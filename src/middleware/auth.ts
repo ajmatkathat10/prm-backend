@@ -1,0 +1,38 @@
+/**
+ * middleware/auth.ts — JWT authentication middleware
+ *
+ * SOLID (S — Single Responsibility): This module does one thing —
+ * verify the JWT from the session cookie and attach the decoded user
+ * to the request object. It does not issue tokens or handle passwords.
+ *
+ * PRINCIPLE (DRY): JWT_SECRET is imported from `config/env.ts` —
+ * it is NOT redefined here. Previously it was defined in both this
+ * file and routes/auth.ts, which was a DRY violation.
+ */
+
+import { Request, Response, NextFunction } from 'express';
+import jwt from 'jsonwebtoken';
+import { env } from '../config/env.js';
+import { TokenPayload } from '../services/AuthService.js';
+import { AUTH_ERRORS } from '../constants/index.js';
+
+export interface AuthRequest extends Request {
+  user?: TokenPayload;
+}
+
+export function authMiddleware(req: AuthRequest, res: Response, next: NextFunction): void {
+  const token = req.cookies?.[env.session.cookieName];
+
+  if (!token) {
+    res.status(401).json({ error: AUTH_ERRORS.NO_SESSION });
+    return;
+  }
+
+  try {
+    const decoded = jwt.verify(token, env.jwtSecret) as TokenPayload;
+    req.user = decoded;
+    next();
+  } catch {
+    res.status(401).json({ error: AUTH_ERRORS.INVALID_SESSION });
+  }
+}
