@@ -15,6 +15,11 @@ import cookieParser from 'cookie-parser';
 import { env } from './config/env.js';
 import { connectDatabase } from './config/database.js';
 import authRoutes from './routes/auth.js';
+import employeeRoutes from './routes/employees.js';
+import projectRoutes from './routes/projects.js';
+import allocationRoutes from './routes/allocations.js';
+import userRoutes from './routes/users.js';
+import settingsRoutes from './routes/settings.js';
 import { SERVER_MESSAGES } from './constants/index.js';
 
 const app = express();
@@ -26,6 +31,11 @@ app.use(cookieParser());
 
 // Routes
 app.use('/api/auth', authRoutes);
+app.use('/api/employees', employeeRoutes);
+app.use('/api/projects', projectRoutes);
+app.use('/api/allocations', allocationRoutes);
+app.use('/api/users', userRoutes);
+app.use('/api/settings', settingsRoutes);
 
 app.get('/', (_req, res) => {
   res.json({ message: SERVER_MESSAGES.ACTIVE, status: SERVER_MESSAGES.STATUS_OK });

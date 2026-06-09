@@ -21,13 +21,10 @@
 
 import { Document, Model } from 'mongoose';
 
-// Generic filter type — Mongoose accepts a plain object for queries
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-type MongoFilter = Record<string, any>;
+export type MongoFilter = Record<string, any>;
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-type MongoUpdate = Record<string, any>;
-
-// Read Interface
+export type MongoUpdate = Record<string, any>;
 
 export interface IReadRepository<T> {
   findById(id: string): Promise<T | null>;
@@ -35,19 +32,13 @@ export interface IReadRepository<T> {
   findAll(filter?: MongoFilter): Promise<T[]>;
 }
 
-// Write Interface 
-
 export interface IWriteRepository<T> {
   create(data: Partial<T>): Promise<T>;
   updateById(id: string, data: MongoUpdate): Promise<T | null>;
   deleteById(id: string): Promise<boolean>;
 }
 
-// Combined Repository Interface 
-
 export interface IRepository<T> extends IReadRepository<T>, IWriteRepository<T> { }
-
-// Abstract Base Implementation 
 
 export abstract class BaseRepository<T extends Document> implements IRepository<T> {
   constructor(protected readonly model: Model<T>) { }

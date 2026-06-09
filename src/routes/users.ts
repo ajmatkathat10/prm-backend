@@ -1,0 +1,73 @@
+import { Router } from 'express';
+import { authMiddleware, adminMiddleware, AuthRequest } from '../middleware/auth.js';
+import { userService } from '../services/UserService.js';
+import { AuthError } from '../services/AuthService.js';
+import { COMMON_ERRORS } from '../constants/index.js';
+
+const router = Router();
+
+router.use(authMiddleware);
+router.use(adminMiddleware);
+
+// POST /api/users (Create User)
+router.post('/', async (req, res) => {
+  try {
+    const { fullName, email, username, password, role } = req.body;
+    const user = await userService.createUser(fullName, email, username, password, role);
+    res.json({ success: true, user });
+  } catch (error) {
+    handleControllerError(error, res);
+  }
+});
+
+// GET /api/users (List all users)
+router.get('/', async (_req, res) => {
+  try {
+    const users = await userService.getAllUsers();
+    res.json({ success: true, users });
+  } catch (error) {
+    handleControllerError(error, res);
+  }
+});
+
+// POST /api/users/:id/reactivate
+router.post('/:id/reactivate', async (req, res) => {
+  try {
+    const user = await userService.reactivateUser(req.params.id);
+    res.json({ success: true, user });
+  } catch (error) {
+    handleControllerError(error, res);
+  }
+});
+
+// POST /api/users/:id/deactivate
+router.post('/:id/deactivate', async (req: AuthRequest, res) => {
+  try {
+    const user = await userService.deactivateUser(req.params.id as string, req.user?.id as string);
+    res.json({ success: true, user });
+  } catch (error) {
+    handleControllerError(error, res);
+  }
+});
+
+// POST /api/users/:id/reset-password
+router.post('/:id/reset-password', async (req, res) => {
+  try {
+    const { newPassword } = req.body;
+    const user = await userService.resetPassword(req.params.id, newPassword);
+    res.json({ success: true, user });
+  } catch (error) {
+    handleControllerError(error, res);
+  }
+});
+
+function handleControllerError(error: unknown, res: import('express').Response): void {
+  if (error instanceof AuthError) {
+    res.status(error.statusCode).json({ error: error.message });
+    return;
+  }
+  console.error('[UserRoute] Unexpected error:', error);
+  res.status(500).json({ error: COMMON_ERRORS.UNEXPECTED });
+}
+
+export default router;
