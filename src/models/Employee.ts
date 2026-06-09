@@ -8,7 +8,7 @@ export interface IEmployeeSkill {
 
 export interface IEmployee extends Document {
   userId: Types.ObjectId;
-  managerId?: Types.ObjectId;  // BRD V4: links employee to their manager for team scoping
+  managerId?: Types.ObjectId;
   fullName: string;
   email: string;
   department: string;
