@@ -90,7 +90,10 @@ export class EmployeeService {
 
     // Check if employee already has the skill
     const skillExists = employee.skills.some(
-      (s) => s.skillId.toString() === skill!._id.toString()
+      (s) => {
+        const sId = (s.skillId as unknown as { _id?: mongoose.Types.ObjectId })._id?.toString() || s.skillId.toString();
+        return sId === skill!._id.toString();
+      }
     );
     if (skillExists) {
       throw new AuthError('Employee already has this skill configured', 400);
@@ -120,7 +123,10 @@ export class EmployeeService {
     }
 
     const skillIndex = employee.skills.findIndex(
-      (s) => s.skillId.toString() === skillId
+      (s) => {
+        const sId = (s.skillId as unknown as { _id?: mongoose.Types.ObjectId })._id?.toString() || s.skillId.toString();
+        return sId === skillId;
+      }
     );
     if (skillIndex === -1) {
       throw new AuthError('Skill not found on this employee profile', 404);
@@ -142,9 +148,10 @@ export class EmployeeService {
     }
 
     const initialLength = employee.skills.length;
-    employee.skills = employee.skills.filter(
-      (s) => s.skillId.toString() !== skillId
-    );
+    employee.skills = employee.skills.filter((s) => {
+      const sId = (s.skillId as unknown as { _id?: mongoose.Types.ObjectId })._id?.toString() || s.skillId.toString();
+      return sId !== skillId;
+    });
 
     if (employee.skills.length === initialLength) {
       throw new AuthError('Skill not found on this employee profile', 404);
