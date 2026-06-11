@@ -9,7 +9,6 @@ const router = Router();
 router.use(authMiddleware);
 router.use(adminMiddleware);
 
-// GET /api/settings
 router.get('/', async (_req, res) => {
   try {
     const settings = await systemConfigService.getConfig();
@@ -19,7 +18,6 @@ router.get('/', async (_req, res) => {
   }
 });
 
-// PUT /api/settings
 router.put('/', async (req, res) => {
   try {
     const settings = await systemConfigService.updateConfig(req.body);

@@ -1,11 +1,3 @@
-/**
- * env.ts — Singleton environment configuration
- 
- * SINGLETON PATTERN: All environment variables are read and validated
- * in exactly ONE place. Every other module imports from here — no more
- * scattered `process.env.*` calls throughout the codebase.
- 
- */
 import * as dotenv from 'dotenv';
 dotenv.config();
 

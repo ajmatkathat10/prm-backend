@@ -9,7 +9,6 @@ const router = Router();
 router.use(authMiddleware);
 router.use(adminMiddleware);
 
-// GET /api/allocations
 router.get('/', async (req, res) => {
   try {
     const { resourceId, projectId } = req.query;

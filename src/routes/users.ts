@@ -9,7 +9,6 @@ const router = Router();
 router.use(authMiddleware);
 router.use(adminMiddleware);
 
-// POST /api/users (Create User)
 router.post('/', async (req, res) => {
   try {
     const { fullName, email, username, password, role, designation } = req.body;
@@ -20,7 +19,6 @@ router.post('/', async (req, res) => {
   }
 });
 
-// GET /api/users (List all users)
 router.get('/', async (_req, res) => {
   try {
     const users = await userService.getAllUsers();
@@ -30,7 +28,6 @@ router.get('/', async (_req, res) => {
   }
 });
 
-// POST /api/users/:id/reactivate
 router.post('/:id/reactivate', async (req, res) => {
   try {
     const user = await userService.reactivateUser(req.params.id);
@@ -40,7 +37,6 @@ router.post('/:id/reactivate', async (req, res) => {
   }
 });
 
-// POST /api/users/:id/deactivate
 router.post('/:id/deactivate', async (req: AuthRequest, res) => {
   try {
     const user = await userService.deactivateUser(req.params.id as string, req.user?.id as string);
@@ -50,7 +46,6 @@ router.post('/:id/deactivate', async (req: AuthRequest, res) => {
   }
 });
 
-// POST /api/users/:id/reset-password
 router.post('/:id/reset-password', async (req, res) => {
   try {
     const { newPassword } = req.body;

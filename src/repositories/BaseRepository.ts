@@ -1,24 +1,3 @@
-/**
- * BaseRepository.ts — Generic repository interfaces and abstract base class
- *
- * PATTERN (Repository Pattern): This file defines the contracts that every
- * domain repository must fulfill. Separates data access logic from business
- * logic in services.
- *
- * SOLID (I — Interface Segregation): Split into `IReadRepository` and
- * `IWriteRepository` so that read-only use cases can depend only on
- * IReadRepository without being forced to implement write methods.
- *
- * SOLID (D — Dependency Inversion): Services depend on these INTERFACES
- * (abstractions), not on Mongoose model implementations (concrete details).
- * This means you could swap out MongoDB for another store without touching
- * service code.
- *
- * SOLID (O — Open/Closed): New repositories extend BaseRepository without
- * modifying it. Adding a new entity means adding a new subclass, not editing
- * existing code.
- */
-
 import { Document, Model } from 'mongoose';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any

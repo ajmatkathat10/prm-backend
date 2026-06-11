@@ -9,7 +9,6 @@ const router = Router();
 router.use(authMiddleware);
 router.use(adminMiddleware);
 
-// GET /api/resources
 router.get('/', async (req, res) => {
   try {
     const { status } = req.query;
@@ -22,7 +21,6 @@ router.get('/', async (req, res) => {
   }
 });
 
-// POST /api/resources/assign-manager
 router.post('/assign-manager', async (req, res) => {
   try {
     const { employeeUserId, managerUserId } = req.body;
@@ -33,7 +31,6 @@ router.post('/assign-manager', async (req, res) => {
   }
 });
 
-// POST /api/resources/:id/deactivate
 router.post('/:id/deactivate', async (req: AuthRequest, res) => {
   try {
     const resource = await resourceService.deactivateResource(req.params.id as string, req.user?.id as string);
@@ -43,7 +40,6 @@ router.post('/:id/deactivate', async (req: AuthRequest, res) => {
   }
 });
 
-// POST /api/resources/:id/skills
 router.post('/:id/skills', async (req, res) => {
   try {
     const { name, category, proficiency } = req.body;
@@ -54,7 +50,6 @@ router.post('/:id/skills', async (req, res) => {
   }
 });
 
-// PUT /api/resources/:id/skills/:skillId
 router.put('/:id/skills/:skillId', async (req, res) => {
   try {
     const { proficiency } = req.body;
@@ -65,7 +60,6 @@ router.put('/:id/skills/:skillId', async (req, res) => {
   }
 });
 
-// DELETE /api/resources/:id/skills/:skillId
 router.delete('/:id/skills/:skillId', async (req, res) => {
   try {
     const resource = await resourceService.removeResourceSkill(req.params.id, req.params.skillId);
