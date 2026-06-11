@@ -5,6 +5,7 @@ import { allocationRepository } from '../repositories/AllocationRepository.js';
 import { IResource } from '../models/Resource.js';
 import { AuthError } from './AuthService.js';
 import mongoose from 'mongoose';
+import { RESOURCE_ERRORS } from '../constants/index.js';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function serializeResource(resource: IResource): any {
@@ -54,26 +55,23 @@ export class ResourceService {
   async deactivateResource(resourceId: string, requestingUserId?: string): Promise<any> {
     const resource = await this.resourceRepo.findById(resourceId);
     if (!resource) {
-      throw new AuthError('Resource not found', 404);
+      throw new AuthError(RESOURCE_ERRORS.NOT_FOUND, 404);
     }
 
     const linkedUserId = (resource.userId as unknown as { _id?: mongoose.Types.ObjectId })._id?.toString() || resource.userId.toString();
     if (requestingUserId && linkedUserId === requestingUserId) {
-      throw new AuthError('An administrator cannot deactivate their own profile', 400);
+      throw new AuthError(RESOURCE_ERRORS.DEACTIVATE_SELF, 400);
     }
 
-    // 1. Deactivate resource record
     const updatedResource = await this.resourceRepo.updateById(resourceId, {
       isActive: false,
       status: 'INACTIVE',
     });
 
-    // 2. Block the linked user account
     if (resource.userId) {
       await this.userRepo.deactivate(linkedUserId);
     }
 
-    // 3. End all active allocations today
     const activeAllocations = await this.allocationRepo.findActiveAllocationsForResource(resourceId);
     const today = new Date();
     for (const alloc of activeAllocations) {
@@ -94,15 +92,14 @@ export class ResourceService {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   ): Promise<any> {
     if (!skillName || !category || !proficiency) {
-      throw new AuthError('Skill name, category, and proficiency are required', 400);
+      throw new AuthError(RESOURCE_ERRORS.SKILL_REQUIRED_FIELDS, 400);
     }
 
     const resource = await this.resourceRepo.findById(resourceId);
     if (!resource) {
-      throw new AuthError('Resource not found', 404);
+      throw new AuthError(RESOURCE_ERRORS.NOT_FOUND, 404);
     }
 
-    // Look up or create skill
     let skill = await this.skillRepo.findByName(skillName);
     if (!skill) {
       skill = await this.skillRepo.create({
@@ -111,7 +108,6 @@ export class ResourceService {
       });
     }
 
-    // Check if resource already has the skill
     const skillExists = resource.skills.some(
       (s) => {
         const sId = (s.skillId as unknown as { _id?: mongoose.Types.ObjectId })._id?.toString() || s.skillId.toString();
@@ -119,7 +115,7 @@ export class ResourceService {
       }
     );
     if (skillExists) {
-      throw new AuthError('Resource already has this skill configured', 400);
+      throw new AuthError(RESOURCE_ERRORS.SKILL_EXISTS, 400);
     }
 
     resource.skills.push({
@@ -143,7 +139,7 @@ export class ResourceService {
   ): Promise<any> {
     const resource = await this.resourceRepo.findById(resourceId);
     if (!resource) {
-      throw new AuthError('Resource not found', 404);
+      throw new AuthError(RESOURCE_ERRORS.NOT_FOUND, 404);
     }
 
     const skillIndex = resource.skills.findIndex(
@@ -153,7 +149,7 @@ export class ResourceService {
       }
     );
     if (skillIndex === -1) {
-      throw new AuthError('Skill not found on this resource profile', 404);
+      throw new AuthError(RESOURCE_ERRORS.SKILL_NOT_FOUND, 404);
     }
 
     resource.skills[skillIndex].proficiency = proficiency;
@@ -169,7 +165,7 @@ export class ResourceService {
   async removeResourceSkill(resourceId: string, skillId: string): Promise<any> {
     const resource = await this.resourceRepo.findById(resourceId);
     if (!resource) {
-      throw new AuthError('Resource not found', 404);
+      throw new AuthError(RESOURCE_ERRORS.NOT_FOUND, 404);
     }
 
     const initialLength = resource.skills.length;
@@ -179,7 +175,7 @@ export class ResourceService {
     });
 
     if (resource.skills.length === initialLength) {
-      throw new AuthError('Skill not found on this resource profile', 404);
+      throw new AuthError(RESOURCE_ERRORS.SKILL_NOT_FOUND, 404);
     }
 
     const updatedResource = await this.resourceRepo.updateById(resourceId, {
@@ -192,26 +188,24 @@ export class ResourceService {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   async assignManager(resourceUserId: string, managerUserId: string): Promise<any> {
     if (!resourceUserId || !managerUserId) {
-      throw new AuthError('Resource User ID and Manager User ID are required', 400);
+      throw new AuthError(RESOURCE_ERRORS.ASSIGN_REQUIRED_FIELDS, 400);
     }
 
-    // Find the manager user record and verify role
     const managerUser = await this.userRepo.findById(managerUserId);
     if (!managerUser) {
-      throw new AuthError('Manager user account not found', 404);
+      throw new AuthError(RESOURCE_ERRORS.MANAGER_NOT_FOUND, 404);
     }
     if (managerUser.role !== 'MANAGER') {
-      throw new AuthError('The assigned manager user must have the MANAGER role', 400);
+      throw new AuthError(RESOURCE_ERRORS.INVALID_MANAGER_ROLE, 400);
     }
 
-    // Find resource by userId or resource record _id
     let resource = await this.resourceRepo.findByUserId(resourceUserId);
     if (!resource) {
       resource = await this.resourceRepo.findById(resourceUserId);
     }
 
     if (!resource) {
-      throw new AuthError('Resource profile not found', 404);
+      throw new AuthError(RESOURCE_ERRORS.PROFILE_NOT_FOUND, 404);
     }
 
     const updatedResource = await this.resourceRepo.updateById(resource._id.toString(), {

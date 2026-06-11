@@ -5,6 +5,7 @@ import { AllocationRepository, allocationRepository } from '../repositories/Allo
 import { IUser } from '../models/User.js';
 import { AuthError, validatePasswordStrength } from './AuthService.js';
 import { ResourceDesignation } from '../models/Resource.js';
+import { USER_ERRORS } from '../constants/index.js';
 
 export class UserService {
   constructor(
@@ -22,11 +23,11 @@ export class UserService {
     designation?: ResourceDesignation
   ): Promise<IUser> {
     if (!fullName || !email || !username || !passwordTemp || !role) {
-      throw new AuthError('All fields are mandatory', 400);
+      throw new AuthError(USER_ERRORS.MANDATORY_FIELDS, 400);
     }
 
     if (role === 'EMPLOYEE' && !designation) {
-      throw new AuthError('Designation is required for resource users', 400);
+      throw new AuthError(USER_ERRORS.DESIGNATION_REQUIRED, 400);
     }
 
     const passwordError = validatePasswordStrength(passwordTemp);
@@ -36,12 +37,12 @@ export class UserService {
 
     const existingUser = await this.userRepo.findByUsernameOrEmail(username);
     if (existingUser) {
-      throw new AuthError('Username is already taken', 400);
+      throw new AuthError(USER_ERRORS.USERNAME_TAKEN, 400);
     }
 
     const existingEmail = await this.userRepo.findByUsernameOrEmail(email);
     if (existingEmail) {
-      throw new AuthError('Email is already in use', 400);
+      throw new AuthError(USER_ERRORS.EMAIL_IN_USE, 400);
     }
 
     const passwordHash = await bcrypt.hash(passwordTemp, 10);
@@ -75,7 +76,7 @@ export class UserService {
   async reactivateUser(userId: string): Promise<IUser> {
     const user = await this.userRepo.reactivate(userId);
     if (!user) {
-      throw new AuthError('User not found', 404);
+      throw new AuthError(USER_ERRORS.NOT_FOUND, 404);
     }
 
     const resource = await this.resourceRepo.findByUserId(userId);
@@ -91,23 +92,21 @@ export class UserService {
 
   async deactivateUser(userId: string, requestingUserId?: string): Promise<IUser> {
     if (requestingUserId && userId === requestingUserId) {
-      throw new AuthError('An administrator cannot deactivate their own account', 400);
+      throw new AuthError(USER_ERRORS.DEACTIVATE_SELF, 400);
     }
 
     const user = await this.userRepo.deactivate(userId);
     if (!user) {
-      throw new AuthError('User not found', 404);
+      throw new AuthError(USER_ERRORS.NOT_FOUND, 404);
     }
 
     const resource = await this.resourceRepo.findByUserId(userId);
     if (resource) {
-      // 1. Deactivate resource record
       await this.resourceRepo.updateById(resource._id.toString(), {
         isActive: false,
         status: 'INACTIVE',
       });
 
-      // 2. End all active allocations today
       const activeAllocations = await this.allocationRepo.findActiveAllocationsForResource(resource._id.toString());
       const today = new Date();
       for (const alloc of activeAllocations) {
@@ -134,7 +133,7 @@ export class UserService {
     });
 
     if (!user) {
-      throw new AuthError('User not found', 404);
+      throw new AuthError(USER_ERRORS.NOT_FOUND, 404);
     }
 
     return user;

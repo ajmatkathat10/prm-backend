@@ -6,7 +6,6 @@ async function main() {
   console.log(SEED_MESSAGES.STARTING);
   await connectDatabase();
 
-  // 1. Clean existing records
   console.log(SEED_MESSAGES.CLEANING);
   await SystemConfig.deleteMany({});
   await Project.deleteMany({});
@@ -16,7 +15,6 @@ async function main() {
   await Allocation.deleteMany({});
   await Timesheet.deleteMany({});
 
-  // 2. Seed System Config
   console.log(SEED_MESSAGES.SEEDING_CONFIG);
   await SystemConfig.create({
     id: 1,
@@ -26,7 +24,6 @@ async function main() {
     maxWeeklyHours: 40,
   });
 
-  // 3. Seed Skills Master Catalog
   console.log(SEED_MESSAGES.SEEDING_SKILLS);
   const skillsData: { name: string; category: 'BACKEND' | 'FRONTEND' | 'DEVOPS' | 'QA' | 'OTHER' }[] = [
     // BACKEND

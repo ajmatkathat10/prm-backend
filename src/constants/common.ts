@@ -2,6 +2,45 @@ export const COMMON_ERRORS = {
   UNEXPECTED: 'An unexpected error occurred',
 } as const;
 
+export const USER_ERRORS = {
+  MANDATORY_FIELDS: 'All fields are mandatory',
+  DESIGNATION_REQUIRED: 'Designation is required for resource users',
+  USERNAME_TAKEN: 'Username is already taken',
+  EMAIL_IN_USE: 'Email is already in use',
+  NOT_FOUND: 'User not found',
+  DEACTIVATE_SELF: 'An administrator cannot deactivate their own account',
+} as const;
+
+export const PROJECT_ERRORS = {
+  REQUIRED_FIELDS: 'Project name, start date, end date, and manager are required',
+  DATE_ORDER: 'Start date must be before end date',
+  MANAGER_NOT_FOUND: 'Assigned manager user not found',
+  INVALID_MANAGER_ROLE: 'Assigned user must have the MANAGER role',
+  NOT_FOUND: 'Project not found',
+  MILESTONE_REQUIRED_FIELDS: 'Milestone title and due date are required',
+  MILESTONE_DATE_RANGE: 'Milestone due date must fall within the project duration',
+  MILESTONE_STATUS_REQUIRED: 'Milestone status is required',
+  MILESTONE_NOT_FOUND: 'Milestone not found',
+} as const;
+
+export const RESOURCE_ERRORS = {
+  NOT_FOUND: 'Resource not found',
+  DEACTIVATE_SELF: 'An administrator cannot deactivate their own profile',
+  SKILL_REQUIRED_FIELDS: 'Skill name, category, and proficiency are required',
+  SKILL_EXISTS: 'Resource already has this skill configured',
+  SKILL_NOT_FOUND: 'Skill not found on this resource profile',
+  ASSIGN_REQUIRED_FIELDS: 'Resource User ID and Manager User ID are required',
+  MANAGER_NOT_FOUND: 'Manager user account not found',
+  INVALID_MANAGER_ROLE: 'The assigned manager user must have the MANAGER role',
+  PROFILE_NOT_FOUND: 'Resource profile not found',
+} as const;
+
+export const CONFIG_ERRORS = {
+  NOT_FOUND: 'System configuration not found',
+  SCHEDULER_INTERVAL_MIN: 'Scheduler interval must be at least 1 hour',
+  MAX_HOURS_MIN: 'Maximum weekly hours must be at least 1 hour',
+} as const;
+
 export const SERVER_MESSAGES = {
   ACTIVE: 'PRM Backend Server is active',
   STATUS_OK: 'ok',
