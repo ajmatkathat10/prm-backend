@@ -7,7 +7,7 @@ export interface ITimesheetEntry {
 }
 
 export interface ITimesheet extends Document {
-  employeeId: Types.ObjectId;
+  resourceId: Types.ObjectId;
   weekStart: Date;
   status: 'SUBMITTED' | 'MISSED';
   totalHours: number;
@@ -23,7 +23,7 @@ const TimesheetEntrySchema = new Schema<ITimesheetEntry>({
 }, { _id: false });
 
 const TimesheetSchema = new Schema<ITimesheet>({
-  employeeId: { type: Schema.Types.ObjectId, ref: 'Employee', required: true },
+  resourceId: { type: Schema.Types.ObjectId, ref: 'Resource', required: true },
   weekStart: { type: Date, required: true },
   status: { type: String, enum: ['SUBMITTED', 'MISSED'], default: 'SUBMITTED' },
   totalHours: { type: Number, required: true, default: 0 },
@@ -34,7 +34,7 @@ const TimesheetSchema = new Schema<ITimesheet>({
   collection: 'timesheets'
 });
 
-// Compound unique index for employee and weekStart
-TimesheetSchema.index({ employeeId: 1, weekStart: 1 }, { unique: true });
+// Compound unique index for resource and weekStart
+TimesheetSchema.index({ resourceId: 1, weekStart: 1 }, { unique: true });
 
 export const Timesheet = mongoose.model<ITimesheet>('Timesheet', TimesheetSchema);

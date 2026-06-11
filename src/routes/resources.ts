@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { authMiddleware, adminMiddleware, AuthRequest } from '../middleware/auth.js';
-import { employeeService } from '../services/EmployeeService.js';
+import { resourceService } from '../services/ResourceService.js';
 import { AuthError } from '../services/AuthService.js';
 import { COMMON_ERRORS } from '../constants/index.js';
 
@@ -9,68 +9,67 @@ const router = Router();
 router.use(authMiddleware);
 router.use(adminMiddleware);
 
-// GET /api/employees
+// GET /api/resources
 router.get('/', async (req, res) => {
   try {
-    const { status, department } = req.query;
-    const list = await employeeService.getAllEmployees({
+    const { status } = req.query;
+    const list = await resourceService.getAllResources({
       status: status ? String(status) : undefined,
-      department: department ? String(department) : undefined,
     });
-    res.json({ success: true, employees: list });
+    res.json({ success: true, resources: list });
   } catch (error) {
     handleControllerError(error, res);
   }
 });
 
-// POST /api/employees/assign-manager
+// POST /api/resources/assign-manager
 router.post('/assign-manager', async (req, res) => {
   try {
     const { employeeUserId, managerUserId } = req.body;
-    const employee = await employeeService.assignManager(employeeUserId, managerUserId);
-    res.json({ success: true, employee });
+    const resource = await resourceService.assignManager(employeeUserId, managerUserId);
+    res.json({ success: true, resource });
   } catch (error) {
     handleControllerError(error, res);
   }
 });
 
-// POST /api/employees/:id/deactivate
+// POST /api/resources/:id/deactivate
 router.post('/:id/deactivate', async (req: AuthRequest, res) => {
   try {
-    const employee = await employeeService.deactivateEmployee(req.params.id as string, req.user?.id as string);
-    res.json({ success: true, employee });
+    const resource = await resourceService.deactivateResource(req.params.id as string, req.user?.id as string);
+    res.json({ success: true, resource });
   } catch (error) {
     handleControllerError(error, res);
   }
 });
 
-// POST /api/employees/:id/skills
+// POST /api/resources/:id/skills
 router.post('/:id/skills', async (req, res) => {
   try {
     const { name, category, proficiency } = req.body;
-    const employee = await employeeService.addEmployeeSkill(req.params.id, name, category, proficiency);
-    res.json({ success: true, employee });
+    const resource = await resourceService.addResourceSkill(req.params.id, name, category, proficiency);
+    res.json({ success: true, resource });
   } catch (error) {
     handleControllerError(error, res);
   }
 });
 
-// PUT /api/employees/:id/skills/:skillId
+// PUT /api/resources/:id/skills/:skillId
 router.put('/:id/skills/:skillId', async (req, res) => {
   try {
     const { proficiency } = req.body;
-    const employee = await employeeService.updateEmployeeSkill(req.params.id, req.params.skillId, proficiency);
-    res.json({ success: true, employee });
+    const resource = await resourceService.updateResourceSkill(req.params.id, req.params.skillId, proficiency);
+    res.json({ success: true, resource });
   } catch (error) {
     handleControllerError(error, res);
   }
 });
 
-// DELETE /api/employees/:id/skills/:skillId
+// DELETE /api/resources/:id/skills/:skillId
 router.delete('/:id/skills/:skillId', async (req, res) => {
   try {
-    const employee = await employeeService.removeEmployeeSkill(req.params.id, req.params.skillId);
-    res.json({ success: true, employee });
+    const resource = await resourceService.removeResourceSkill(req.params.id, req.params.skillId);
+    res.json({ success: true, resource });
   } catch (error) {
     handleControllerError(error, res);
   }
@@ -81,7 +80,7 @@ function handleControllerError(error: unknown, res: import('express').Response):
     res.status(error.statusCode).json({ error: error.message });
     return;
   }
-  console.error('[EmployeeRoute] Unexpected error:', error);
+  console.error('[ResourceRoute] Unexpected error:', error);
   res.status(500).json({ error: COMMON_ERRORS.UNEXPECTED });
 }
 

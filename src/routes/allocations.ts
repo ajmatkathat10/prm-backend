@@ -12,9 +12,9 @@ router.use(adminMiddleware);
 // GET /api/allocations
 router.get('/', async (req, res) => {
   try {
-    const { employeeId, projectId } = req.query;
+    const { resourceId, projectId } = req.query;
     const allocations = await allocationService.getAllAllocations({
-      employeeId: employeeId ? String(employeeId) : undefined,
+      resourceId: resourceId ? String(resourceId) : undefined,
       projectId: projectId ? String(projectId) : undefined,
     });
     res.json({ success: true, allocations });

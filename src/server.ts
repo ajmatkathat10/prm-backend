@@ -8,7 +8,7 @@ import { fileURLToPath } from 'url';
 import { env } from './config/env.js';
 import { connectDatabase } from './config/database.js';
 import authRoutes from './routes/auth.js';
-import employeeRoutes from './routes/employees.js';
+import resourceRoutes from './routes/resources.js';
 import projectRoutes from './routes/projects.js';
 import allocationRoutes from './routes/allocations.js';
 import userRoutes from './routes/users.js';
@@ -31,7 +31,7 @@ app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerDocument));
 
 // Routes
 app.use('/api/auth', authRoutes);
-app.use('/api/employees', employeeRoutes);
+app.use('/api/resources', resourceRoutes);
 app.use('/api/projects', projectRoutes);
 app.use('/api/allocations', allocationRoutes);
 app.use('/api/users', userRoutes);

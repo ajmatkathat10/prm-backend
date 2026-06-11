@@ -12,8 +12,8 @@ router.use(adminMiddleware);
 // POST /api/users (Create User)
 router.post('/', async (req, res) => {
   try {
-    const { fullName, email, username, password, role } = req.body;
-    const user = await userService.createUser(fullName, email, username, password, role);
+    const { fullName, email, username, password, role, designation } = req.body;
+    const user = await userService.createUser(fullName, email, username, password, role, designation);
     res.json({ success: true, user });
   } catch (error) {
     handleControllerError(error, res);

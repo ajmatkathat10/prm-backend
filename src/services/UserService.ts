@@ -1,14 +1,15 @@
 import bcrypt from 'bcryptjs';
 import { UserRepository, userRepository } from '../repositories/UserRepository.js';
-import { EmployeeRepository, employeeRepository } from '../repositories/EmployeeRepository.js';
+import { ResourceRepository, resourceRepository } from '../repositories/ResourceRepository.js';
 import { AllocationRepository, allocationRepository } from '../repositories/AllocationRepository.js';
 import { IUser } from '../models/User.js';
 import { AuthError, validatePasswordStrength } from './AuthService.js';
+import { ResourceDesignation } from '../models/Resource.js';
 
 export class UserService {
   constructor(
     private readonly userRepo: UserRepository,
-    private readonly employeeRepo: EmployeeRepository,
+    private readonly resourceRepo: ResourceRepository,
     private readonly allocationRepo: AllocationRepository
   ) { }
 
@@ -17,10 +18,15 @@ export class UserService {
     email: string,
     username: string,
     passwordTemp: string,
-    role: 'ADMIN' | 'MANAGER' | 'EMPLOYEE'
+    role: 'ADMIN' | 'MANAGER' | 'EMPLOYEE',
+    designation?: ResourceDesignation
   ): Promise<IUser> {
     if (!fullName || !email || !username || !passwordTemp || !role) {
       throw new AuthError('All fields are mandatory', 400);
+    }
+
+    if (role === 'EMPLOYEE' && !designation) {
+      throw new AuthError('Designation is required for resource users', 400);
     }
 
     const passwordError = validatePasswordStrength(passwordTemp);
@@ -42,6 +48,7 @@ export class UserService {
     const user = await this.userRepo.create({
       username: username.toLowerCase().trim(),
       email: email.toLowerCase().trim(),
+      fullName: fullName.trim(),
       passwordHash,
       role,
       isActive: true,
@@ -49,12 +56,9 @@ export class UserService {
     });
 
     if (role === 'EMPLOYEE') {
-      await this.employeeRepo.create({
+      await this.resourceRepo.create({
         userId: user._id,
-        fullName: fullName.trim(),
-        email: email.toLowerCase().trim(),
-        department: 'Engineering',
-        designation: 'Software Engineer',
+        designation: designation!,
         status: 'BENCH',
         isActive: true,
         skills: [],
@@ -74,9 +78,9 @@ export class UserService {
       throw new AuthError('User not found', 404);
     }
 
-    const employee = await this.employeeRepo.findByUserId(userId);
-    if (employee) {
-      await this.employeeRepo.updateById(employee._id.toString(), {
+    const resource = await this.resourceRepo.findByUserId(userId);
+    if (resource) {
+      await this.resourceRepo.updateById(resource._id.toString(), {
         isActive: true,
         status: 'BENCH',
       });
@@ -95,16 +99,16 @@ export class UserService {
       throw new AuthError('User not found', 404);
     }
 
-    const employee = await this.employeeRepo.findByUserId(userId);
-    if (employee) {
-      // 1. Deactivate employee record
-      await this.employeeRepo.updateById(employee._id.toString(), {
+    const resource = await this.resourceRepo.findByUserId(userId);
+    if (resource) {
+      // 1. Deactivate resource record
+      await this.resourceRepo.updateById(resource._id.toString(), {
         isActive: false,
         status: 'INACTIVE',
       });
 
       // 2. End all active allocations today
-      const activeAllocations = await this.allocationRepo.findActiveAllocationsForEmployee(employee._id.toString());
+      const activeAllocations = await this.allocationRepo.findActiveAllocationsForResource(resource._id.toString());
       const today = new Date();
       for (const alloc of activeAllocations) {
         await this.allocationRepo.updateById(alloc._id.toString(), {
@@ -137,4 +141,4 @@ export class UserService {
   }
 }
 
-export const userService = new UserService(userRepository, employeeRepository, allocationRepository);
+export const userService = new UserService(userRepository, resourceRepository, allocationRepository);

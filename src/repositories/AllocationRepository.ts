@@ -6,13 +6,13 @@ export class AllocationRepository extends BaseRepository<IAllocation> {
     super(Allocation);
   }
 
-  async findActiveAllocationsForEmployee(employeeId: string): Promise<IAllocation[]> {
-    return this.findAll({ employeeId, status: 'ACTIVE' });
+  async findActiveAllocationsForResource(resourceId: string): Promise<IAllocation[]> {
+    return this.findAll({ resourceId, status: 'ACTIVE' });
   }
 
-  async findOverlappingAllocations(employeeId: string, fromDate: Date, toDate: Date): Promise<IAllocation[]> {
+  async findOverlappingAllocations(resourceId: string, fromDate: Date, toDate: Date): Promise<IAllocation[]> {
     return this.findAll({
-      employeeId,
+      resourceId,
       status: 'ACTIVE',
       fromDate: { $lte: toDate },
       toDate: { $gte: fromDate }
@@ -23,7 +23,13 @@ export class AllocationRepository extends BaseRepository<IAllocation> {
   async findAllWithDetails(filter: Record<string, any> = {}): Promise<IAllocation[]> {
     return this.model
       .find(filter)
-      .populate('employeeId', 'fullName department')
+      .populate({
+        path: 'resourceId',
+        populate: {
+          path: 'userId',
+          select: 'fullName email'
+        }
+      })
       .populate('projectId', 'name')
       .exec();
   }
