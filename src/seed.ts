@@ -99,18 +99,6 @@ async function main() {
 
   // 5. Seed Employee Profiles (linked to User Accounts)
   console.log(SEED_MESSAGES.SEEDING_EMPLOYEES);
-  await Employee.create({
-    userId: userManager._id,
-    fullName: 'Sarah Jenkins',
-    email: 'manager@techserve.com',
-    department: 'Delivery',
-    designation: 'Delivery Manager',
-    status: 'ALLOCATED',
-    skills: [
-      { skillId: skillsMap['System Architecture']._id, proficiency: 'ADVANCED', addedAt: new Date() },
-      { skillId: skillsMap['Project Planning']._id, proficiency: 'ADVANCED', addedAt: new Date() }
-    ]
-  });
 
   await Employee.create({
     userId: userEmployee._id,

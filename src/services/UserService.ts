@@ -48,14 +48,13 @@ export class UserService {
       forcePasswordChange: true,
     });
 
-    if (role === 'EMPLOYEE' || role === 'MANAGER') {
-      const designation = role === 'MANAGER' ? 'Delivery Manager' : 'Software Engineer';
+    if (role === 'EMPLOYEE') {
       await this.employeeRepo.create({
         userId: user._id,
         fullName: fullName.trim(),
         email: email.toLowerCase().trim(),
         department: 'Engineering',
-        designation,
+        designation: 'Software Engineer',
         status: 'BENCH',
         isActive: true,
         skills: [],
