@@ -1,26 +1,9 @@
-/**
- * routes/auth.ts — HTTP adapter for authentication endpoints
- *
- * SOLID (S — Single Responsibility): Route handlers have ONE job —
- * translate HTTP request/response. All business logic has been moved
- * to AuthService. These handlers are intentionally thin.
- *
- * PRINCIPLE (Separation of Concerns): HTTP concerns (parsing body,
- * setting status codes, formatting JSON) are separated from business
- * concerns (password validation, JWT creation, DB queries).
- *
- * CLEAN CODE: Each handler is short and readable. Named constants
- * instead of inline magic strings. Error handling is consistent.
- */
-
 import { Router } from 'express';
 import { authMiddleware, AuthRequest } from '../middleware/auth.js';
 import { authService, AuthError } from '../services/AuthService.js';
 import { AUTH_ERRORS, COMMON_ERRORS } from '../constants/index.js';
 
 const router = Router();
-
-// POST /api/auth/login
 
 router.post('/login', async (req, res): Promise<void> => {
   const { username, password } = req.body;
@@ -39,20 +22,14 @@ router.post('/login', async (req, res): Promise<void> => {
   }
 });
 
-// POST /api/auth/logout
-
 router.post('/logout', (_req, res) => {
   authService.clearSessionCookie(res);
   res.json({ success: true });
 });
 
-// GET /api/auth/current-user
-
 router.get('/current-user', authMiddleware, (req: AuthRequest, res) => {
   res.json({ user: req.user ?? null });
 });
-
-// POST /api/auth/change-password
 
 router.post('/change-password', authMiddleware, async (req: AuthRequest, res): Promise<void> => {
   const { newPassword } = req.body;
@@ -72,13 +49,6 @@ router.post('/change-password', authMiddleware, async (req: AuthRequest, res): P
   }
 });
 
-// Shared Error Handler
-
-/**
- * Converts AuthError and unexpected errors
- * into consistent HTTP responses. Route handlers never write error
- * logic themselves — they delegate to this function.
- */
 function handleAuthError(error: unknown, res: import('express').Response): void {
   if (error instanceof AuthError) {
     res.status(error.statusCode).json({ error: error.message });

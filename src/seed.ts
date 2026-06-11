@@ -1,4 +1,4 @@
-import { User, Skill, Employee, Project, SystemConfig, Allocation, Timesheet, ISkill } from './models/index.js';
+import { User, Skill, Resource, Project, SystemConfig, Allocation, Timesheet, ISkill } from './models/index.js';
 import { connectDatabase, disconnectDatabase } from './config/database.js';
 import { SEED_MESSAGES } from './constants/index.js';
 
@@ -6,17 +6,15 @@ async function main() {
   console.log(SEED_MESSAGES.STARTING);
   await connectDatabase();
 
-  // 1. Clean existing records
   console.log(SEED_MESSAGES.CLEANING);
   await SystemConfig.deleteMany({});
   await Project.deleteMany({});
-  await Employee.deleteMany({});
+  await Resource.deleteMany({});
   await Skill.deleteMany({});
   await User.deleteMany({});
   await Allocation.deleteMany({});
   await Timesheet.deleteMany({});
 
-  // 2. Seed System Config
   console.log(SEED_MESSAGES.SEEDING_CONFIG);
   await SystemConfig.create({
     id: 1,
@@ -26,7 +24,6 @@ async function main() {
     maxWeeklyHours: 40,
   });
 
-  // 3. Seed Skills Master Catalog
   console.log(SEED_MESSAGES.SEEDING_SKILLS);
   const skillsData: { name: string; category: 'BACKEND' | 'FRONTEND' | 'DEVOPS' | 'QA' | 'OTHER' }[] = [
     // BACKEND
@@ -76,6 +73,7 @@ async function main() {
   await User.create({
     username: 'admin',
     email: 'admin@techserve.com',
+    fullName: 'System Administrator',
     passwordHash: passHash,
     role: 'ADMIN',
     forcePasswordChange: true,
@@ -84,6 +82,7 @@ async function main() {
   const userManager = await User.create({
     username: 'manager',
     email: 'manager@techserve.com',
+    fullName: 'Sarah Jenkins',
     passwordHash: passHash,
     role: 'MANAGER',
     forcePasswordChange: true,
@@ -92,32 +91,18 @@ async function main() {
   const userEmployee = await User.create({
     username: 'anil_mehta',
     email: 'anil.mehta@techserve.com',
+    fullName: 'Anil Mehta',
     passwordHash: passHash,
     role: 'EMPLOYEE',
     forcePasswordChange: true,
   });
 
-  // 5. Seed Employee Profiles (linked to User Accounts)
+  // 5. Seed Resource Profiles (linked to User Accounts)
   console.log(SEED_MESSAGES.SEEDING_EMPLOYEES);
-  await Employee.create({
-    userId: userManager._id,
-    fullName: 'Sarah Jenkins',
-    email: 'manager@techserve.com',
-    department: 'Delivery',
-    designation: 'Delivery Manager',
-    status: 'ALLOCATED',
-    skills: [
-      { skillId: skillsMap['System Architecture']._id, proficiency: 'ADVANCED', addedAt: new Date() },
-      { skillId: skillsMap['Project Planning']._id, proficiency: 'ADVANCED', addedAt: new Date() }
-    ]
-  });
 
-  await Employee.create({
+  await Resource.create({
     userId: userEmployee._id,
-    fullName: 'Anil Mehta',
-    email: 'anil.mehta@techserve.com',
-    department: 'Engineering',
-    designation: 'Senior Backend Engineer',
+    designation: 'Senior Software Engineer',
     status: 'BENCH',
     skills: [
       { skillId: skillsMap['Java']._id, proficiency: 'ADVANCED', addedAt: new Date() },

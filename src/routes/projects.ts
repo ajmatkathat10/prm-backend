@@ -9,7 +9,6 @@ const router = Router();
 router.use(authMiddleware);
 router.use(adminMiddleware);
 
-// POST /api/projects
 router.post('/', async (req, res) => {
   try {
     const project = await projectService.createProject(req.body);
@@ -19,7 +18,6 @@ router.post('/', async (req, res) => {
   }
 });
 
-// GET /api/projects
 router.get('/', async (_req, res) => {
   try {
     const projects = await projectService.getAllProjects();
@@ -29,7 +27,6 @@ router.get('/', async (_req, res) => {
   }
 });
 
-// PUT /api/projects/:id
 router.put('/:id', async (req, res) => {
   try {
     const project = await projectService.updateProject(req.params.id, req.body);
@@ -39,7 +36,6 @@ router.put('/:id', async (req, res) => {
   }
 });
 
-// POST /api/projects/:id/milestones
 router.post('/:id/milestones', async (req, res) => {
   try {
     const { title, dueDate, storyPoints } = req.body;
@@ -50,7 +46,6 @@ router.post('/:id/milestones', async (req, res) => {
   }
 });
 
-// PUT /api/projects/:id/milestones/:milestoneId
 router.put('/:id/milestones/:milestoneId', async (req, res) => {
   try {
     const { status } = req.body;

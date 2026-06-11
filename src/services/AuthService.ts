@@ -1,23 +1,3 @@
-/**
- * AuthService.ts — Authentication business logic layer
- *
- * SOLID (S — Single Responsibility): This service has one job —
- * handle the business rules for authentication. It knows nothing about
- * HTTP (no req/res). Route handlers call it and translate results to HTTP.
- *
- * SOLID (D — Dependency Inversion): AuthService depends on
- * `IReadRepository<IUser>` and `IWriteRepository<IUser>` (abstractions),
- * not on the Mongoose `User` model or `UserRepository` class directly.
- * The concrete repository is injected at construction time.
- *
- * PATTERN (Service Layer): Business logic belongs here, not in route handlers.
- * Routes become thin HTTP adapters — they validate input, call the service,
- * then format the HTTP response.
- *
- * PRINCIPLE (DRY): Cookie configuration and JWT signing options are defined
- * once here and reused by both login and change-password flows.
- */
-
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { Response } from 'express';
@@ -25,8 +5,6 @@ import { IReadRepository, IWriteRepository } from '../repositories/BaseRepositor
 import { IUser } from '../models/User.js';
 import { env } from '../config/env.js';
 import { AUTH_ERRORS } from '../constants/index.js';
-
-// Shared Types 
 
 export interface TokenPayload {
   id: string;
@@ -44,8 +22,6 @@ export type AuthRepository = IReadRepository<IUser> & IWriteRepository<IUser> & 
   findByUsernameOrEmail(identifier: string): Promise<IUser | null>;
 };
 
-// Password Validation
-
 const PASSWORD_MIN_LENGTH = 8;
 
 export function validatePasswordStrength(password: string): string | null {
@@ -60,8 +36,6 @@ export function validatePasswordStrength(password: string): string | null {
   }
   return null; // null means valid
 }
-
-// Service Class
 
 export class AuthService {
   constructor(private readonly userRepo: AuthRepository) { }
@@ -128,8 +102,6 @@ export class AuthService {
   }
 }
 
-// Error Class
-
 export class AuthError extends Error {
   constructor(
     message: string,
@@ -139,8 +111,6 @@ export class AuthError extends Error {
     this.name = 'AuthError';
   }
 }
-
-// Helpers
 
 function buildTokenPayload(user: IUser): TokenPayload {
   return {

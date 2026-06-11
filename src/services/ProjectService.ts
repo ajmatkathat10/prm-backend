@@ -2,6 +2,7 @@ import { ProjectRepository, projectRepository } from '../repositories/ProjectRep
 import { userRepository } from '../repositories/UserRepository.js';
 import { IProject } from '../models/Project.js';
 import { AuthError } from './AuthService.js';
+import { PROJECT_ERRORS } from '../constants/index.js';
 
 export class ProjectService {
   constructor(
@@ -13,21 +14,21 @@ export class ProjectService {
     const { name, startDate, endDate, managerId, totalStoryPoints } = data;
 
     if (!name || !startDate || !endDate || !managerId) {
-      throw new AuthError('Project name, start date, end date, and manager are required', 400);
+      throw new AuthError(PROJECT_ERRORS.REQUIRED_FIELDS, 400);
     }
 
     const start = new Date(startDate);
     const end = new Date(endDate);
     if (start >= end) {
-      throw new AuthError('Start date must be before end date', 400);
+      throw new AuthError(PROJECT_ERRORS.DATE_ORDER, 400);
     }
 
     const managerUser = await this.userRepo.findById(managerId.toString());
     if (!managerUser) {
-      throw new AuthError('Assigned manager user not found', 404);
+      throw new AuthError(PROJECT_ERRORS.MANAGER_NOT_FOUND, 404);
     }
     if (managerUser.role !== 'MANAGER') {
-      throw new AuthError('Assigned user must have the MANAGER role', 400);
+      throw new AuthError(PROJECT_ERRORS.INVALID_MANAGER_ROLE, 400);
     }
 
     return this.projectRepo.create({
@@ -54,7 +55,7 @@ export class ProjectService {
   async updateProject(projectId: string, data: Partial<IProject>): Promise<IProject> {
     const project = await this.projectRepo.findById(projectId);
     if (!project) {
-      throw new AuthError('Project not found', 404);
+      throw new AuthError(PROJECT_ERRORS.NOT_FOUND, 404);
     }
 
     const updatePayload: Record<string, unknown> = {};
@@ -68,7 +69,7 @@ export class ProjectService {
     const end = data.endDate ? new Date(data.endDate) : project.endDate;
     if (data.startDate || data.endDate) {
       if (start >= end) {
-        throw new AuthError('Start date must be before end date', 400);
+        throw new AuthError(PROJECT_ERRORS.DATE_ORDER, 400);
       }
       if (data.startDate) updatePayload.startDate = start;
       if (data.endDate) updatePayload.endDate = end;
@@ -77,10 +78,10 @@ export class ProjectService {
     if (data.managerId) {
       const managerUser = await this.userRepo.findById(data.managerId.toString());
       if (!managerUser) {
-        throw new AuthError('Assigned manager user not found', 404);
+        throw new AuthError(PROJECT_ERRORS.MANAGER_NOT_FOUND, 404);
       }
       if (managerUser.role !== 'MANAGER') {
-        throw new AuthError('Assigned user must have the MANAGER role', 400);
+        throw new AuthError(PROJECT_ERRORS.INVALID_MANAGER_ROLE, 400);
       }
       updatePayload.managerId = managerUser._id;
     }
@@ -96,17 +97,17 @@ export class ProjectService {
     storyPoints: number
   ): Promise<IProject> {
     if (!title || !dueDate) {
-      throw new AuthError('Milestone title and due date are required', 400);
+      throw new AuthError(PROJECT_ERRORS.MILESTONE_REQUIRED_FIELDS, 400);
     }
 
     const project = await this.projectRepo.findById(projectId);
     if (!project) {
-      throw new AuthError('Project not found', 404);
+      throw new AuthError(PROJECT_ERRORS.NOT_FOUND, 404);
     }
 
     const milestoneDue = new Date(dueDate);
     if (milestoneDue < project.startDate || milestoneDue > project.endDate) {
-      throw new AuthError('Milestone due date must fall within the project duration', 400);
+      throw new AuthError(PROJECT_ERRORS.MILESTONE_DATE_RANGE, 400);
     }
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -131,19 +132,19 @@ export class ProjectService {
     status: 'NOT_STARTED' | 'IN_PROGRESS' | 'DONE'
   ): Promise<IProject> {
     if (!status) {
-      throw new AuthError('Milestone status is required', 400);
+      throw new AuthError(PROJECT_ERRORS.MILESTONE_STATUS_REQUIRED, 400);
     }
 
     const project = await this.projectRepo.findById(projectId);
     if (!project) {
-      throw new AuthError('Project not found', 404);
+      throw new AuthError(PROJECT_ERRORS.NOT_FOUND, 404);
     }
 
     const milestoneIndex = project.milestones.findIndex(
       (m) => (m as unknown as { _id?: { toString: () => string } })._id?.toString() === milestoneId
     );
     if (milestoneIndex === -1) {
-      throw new AuthError('Milestone not found', 404);
+      throw new AuthError(PROJECT_ERRORS.MILESTONE_NOT_FOUND, 404);
     }
 
     project.milestones[milestoneIndex].status = status;

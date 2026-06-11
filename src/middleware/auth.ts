@@ -1,15 +1,3 @@
-/**
- * middleware/auth.ts — JWT authentication middleware
- *
- * SOLID (S — Single Responsibility): This module does one thing —
- * verify the JWT from the session cookie and attach the decoded user
- * to the request object. It does not issue tokens or handle passwords.
- *
- * PRINCIPLE (DRY): JWT_SECRET is imported from `config/env.ts` —
- * it is NOT redefined here. Previously it was defined in both this
- * file and routes/auth.ts, which was a DRY violation.
- */
-
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
 import { env } from '../config/env.js';

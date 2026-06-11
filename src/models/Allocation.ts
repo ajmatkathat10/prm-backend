@@ -1,7 +1,7 @@
 import mongoose, { Schema, Document, Types } from 'mongoose';
 
 export interface IAllocation extends Document {
-  employeeId: Types.ObjectId;
+  resourceId: Types.ObjectId;
   projectId: Types.ObjectId;
   utilisationPercent: number;
   fromDate: Date;
@@ -12,7 +12,7 @@ export interface IAllocation extends Document {
 }
 
 const AllocationSchema = new Schema<IAllocation>({
-  employeeId: { type: Schema.Types.ObjectId, ref: 'Employee', required: true },
+  resourceId: { type: Schema.Types.ObjectId, ref: 'Resource', required: true },
   projectId: { type: Schema.Types.ObjectId, ref: 'Project', required: true },
   utilisationPercent: { type: Number, required: true, min: 0, max: 100 },
   fromDate: { type: Date, required: true },
