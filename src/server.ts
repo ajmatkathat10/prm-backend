@@ -1,17 +1,10 @@
-/**
- * server.ts — Application bootstrap entry point
- *
- * SOLID (S — Single Responsibility): This file's only job is to
- * compose the application — register middleware, mount routes, and start
- * the HTTP server. Database connection is handled by `config/database.ts`.
- *
- * PRINCIPLE (Separation of Concerns): Server setup (HTTP) is separated
- * from database management, configuration reading, and business logic.
- */
-
 import express from 'express';
 import cors from 'cors';
 import cookieParser from 'cookie-parser';
+import swaggerUi from 'swagger-ui-express';
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
 import { env } from './config/env.js';
 import { connectDatabase } from './config/database.js';
 import authRoutes from './routes/auth.js';
@@ -24,10 +17,17 @@ import { SERVER_MESSAGES } from './constants/index.js';
 
 const app = express();
 
-// Middleware
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const swaggerDocument = JSON.parse(
+  fs.readFileSync(path.join(__dirname, 'swagger.json'), 'utf8')
+);
+
 app.use(cors({ origin: true, credentials: true }));
 app.use(express.json());
 app.use(cookieParser());
+
+app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerDocument));
 
 // Routes
 app.use('/api/auth', authRoutes);

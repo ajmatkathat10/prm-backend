@@ -1,0 +1,1183 @@
+{
+  "openapi": "3.0.0",
+  "info": {
+    "title": "Project & Resource Management (PRM) API",
+    "version": "1.0.0",
+    "description": "API documentation for the Project & Resource Management (PRM) Tool. It tracks users, employees, projects, milestones, allocations, and configurations."
+  },
+  "servers": [
+    {
+      "url": "http://localhost:5001/api",
+      "description": "Local Development Server"
+    }
+  ],
+  "components": {
+    "securitySchemes": {
+      "cookieAuth": {
+        "type": "apiKey",
+        "in": "cookie",
+        "name": "token",
+        "description": "JWT authentication token passed via httpOnly secure cookie."
+      }
+    },
+    "schemas": {
+      "User": {
+        "type": "object",
+        "properties": {
+          "_id": { "type": "string" },
+          "username": { "type": "string" },
+          "email": { "type": "string" },
+          "role": { "type": "string", "enum": ["ADMIN", "MANAGER", "EMPLOYEE"] },
+          "forcePasswordChange": { "type": "boolean" },
+          "isActive": { "type": "boolean" }
+        }
+      },
+      "EmployeeSkill": {
+        "type": "object",
+        "properties": {
+          "skillId": { "type": "string" },
+          "proficiency": { "type": "string", "enum": ["BEGINNER", "INTERMEDIATE", "ADVANCED"] },
+          "addedAt": { "type": "string", "format": "date-time" }
+        }
+      },
+      "Employee": {
+        "type": "object",
+        "properties": {
+          "_id": { "type": "string" },
+          "userId": { "type": "string" },
+          "managerId": { "type": "string" },
+          "fullName": { "type": "string" },
+          "email": { "type": "string" },
+          "department": { "type": "string" },
+          "designation": { "type": "string" },
+          "status": { "type": "string", "enum": ["BENCH", "ALLOCATED", "INACTIVE"] },
+          "isActive": { "type": "boolean" },
+          "skills": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/EmployeeSkill" }
+          }
+        }
+      },
+      "Milestone": {
+        "type": "object",
+        "properties": {
+          "_id": { "type": "string" },
+          "title": { "type": "string" },
+          "dueDate": { "type": "string", "format": "date-time" },
+          "storyPoints": { "type": "integer" },
+          "status": { "type": "string", "enum": ["NOT_STARTED", "IN_PROGRESS", "DONE"] }
+        }
+      },
+      "Project": {
+        "type": "object",
+        "properties": {
+          "_id": { "type": "string" },
+          "name": { "type": "string" },
+          "description": { "type": "string" },
+          "startDate": { "type": "string", "format": "date-time" },
+          "endDate": { "type": "string", "format": "date-time" },
+          "status": { "type": "string", "enum": ["PLANNED", "ACTIVE", "ON_HOLD", "COMPLETED"] },
+          "managerId": { "type": "string" },
+          "healthFlag": { "type": "string", "enum": ["ON_TRACK", "ATTENTION", "AT_RISK"] },
+          "totalStoryPoints": { "type": "integer" },
+          "milestones": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/Milestone" }
+          }
+        }
+      },
+      "Allocation": {
+        "type": "object",
+        "properties": {
+          "_id": { "type": "string" },
+          "employeeId": { "type": "string" },
+          "projectId": { "type": "string" },
+          "utilisationPercent": { "type": "integer" },
+          "fromDate": { "type": "string", "format": "date-time" },
+          "toDate": { "type": "string", "format": "date-time" },
+          "status": { "type": "string", "enum": ["ACTIVE", "ENDED"] }
+        }
+      },
+      "SystemConfig": {
+        "type": "object",
+        "properties": {
+          "llmProvider": { "type": "string", "enum": ["Gemini", "Groq"] },
+          "llmApiKey": { "type": "string" },
+          "schedulerIntervalHours": { "type": "integer" },
+          "maxWeeklyHours": { "type": "integer" }
+        }
+      }
+    }
+  },
+  "security": [
+    {
+      "cookieAuth": []
+    }
+  ],
+  "paths": {
+    "/auth/login": {
+      "post": {
+        "tags": ["Authentication"],
+        "summary": "Log into the application",
+        "security": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["username", "password"],
+                "properties": {
+                  "username": { "type": "string" },
+                  "password": { "type": "string" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Login successful. Sets authentication cookie.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": { "type": "boolean" },
+                    "user": { "$ref": "#/components/schemas/User" }
+                  }
+                }
+              }
+            }
+          },
+          "400": { "description": "Invalid credentials or missing fields" },
+          "401": { "description": "Authentication failed" }
+        }
+      }
+    },
+    "/auth/logout": {
+      "post": {
+        "tags": ["Authentication"],
+        "summary": "Log out of the application",
+        "responses": {
+          "200": {
+            "description": "Log out successful. Clears authentication cookie.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": { "type": "boolean" }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/current-user": {
+      "get": {
+        "tags": ["Authentication"],
+        "summary": "Get the currently logged-in user profile",
+        "responses": {
+          "200": {
+            "description": "Returns current user details",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "user": { "$ref": "#/components/schemas/User" }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/change-password": {
+      "post": {
+        "tags": ["Authentication"],
+        "summary": "Change password (required on first login)",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["newPassword"],
+                "properties": {
+                  "newPassword": { "type": "string" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Password updated successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": { "type": "boolean" },
+                    "user": { "$ref": "#/components/schemas/User" }
+                  }
+                }
+              }
+            }
+          },
+          "400": { "description": "Password policy validation failed" },
+          "401": { "description": "Unauthorized session" }
+        }
+      }
+    },
+    "/employees": {
+      "get": {
+        "tags": ["Employees"],
+        "summary": "Get all employees (Admin) or team employees (Manager)",
+        "parameters": [
+          {
+            "name": "status",
+            "in": "query",
+            "schema": { "type": "string" },
+            "description": "Filter by employee status"
+          },
+          {
+            "name": "department",
+            "in": "query",
+            "schema": { "type": "string" },
+            "description": "Filter by department"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of employees fetched successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": { "type": "boolean" },
+                    "employees": {
+                      "type": "array",
+                      "items": { "$ref": "#/components/schemas/Employee" }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "403": { "description": "Forbidden - employee access denied" }
+        }
+      }
+    },
+    "/employees/{id}": {
+      "get": {
+        "tags": ["Employees"],
+        "summary": "Get detailed employee profile, allocations, and recent timesheet activity tags",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" },
+            "description": "The employee document ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Detailed profile data loaded",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": { "type": "boolean" },
+                    "details": {
+                      "type": "object",
+                      "properties": {
+                        "employee": { "$ref": "#/components/schemas/Employee" },
+                        "activeAllocations": { "type": "array", "items": { "type": "object" } },
+                        "recentActivityTags": { "type": "array", "items": { "type": "string" } },
+                        "currentUtilisation": { "type": "integer" },
+                        "availabilityText": { "type": "string" }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "403": { "description": "Forbidden - employee is not on manager's team" },
+          "404": { "description": "Employee not found" }
+        }
+      }
+    },
+    "/employees/search-ai": {
+      "post": {
+        "tags": ["Employees"],
+        "summary": "AI-assisted candidate skill search and matching recommendation",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["requirement"],
+                "properties": {
+                  "requirement": { "type": "string", "description": "Natural language requirement description." }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Ranked matching candidates returned",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": { "type": "boolean" },
+                    "results": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "employeeId": { "type": "string" },
+                          "name": { "type": "string" },
+                          "skillsMatch": { "type": "array", "items": { "type": "string" } },
+                          "availability": { "type": "string" },
+                          "recentActivity": { "type": "string" },
+                          "reason": { "type": "string" }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/employees/assign-manager": {
+      "post": {
+        "tags": ["Employees"],
+        "summary": "Assign a manager user to an employee profile (Admin only)",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["employeeUserId", "managerUserId"],
+                "properties": {
+                  "employeeUserId": { "type": "string", "description": "Target Employee User ID or Employee profile ID" },
+                  "managerUserId": { "type": "string", "description": "Manager User ID to link" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Manager assignment saved successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": { "type": "boolean" },
+                    "employee": { "$ref": "#/components/schemas/Employee" }
+                  }
+                }
+              }
+            }
+          },
+          "400": { "description": "Missing parameter or manager role check failed" },
+          "403": { "description": "Admin privileges required" }
+        }
+      }
+    },
+    "/employees/{id}/deactivate": {
+      "post": {
+        "tags": ["Employees"],
+        "summary": "Deactivate employee, end active allocations, and block login account (Admin only)",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Employee successfully deactivated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": { "type": "boolean" },
+                    "employee": { "$ref": "#/components/schemas/Employee" }
+                  }
+                }
+              }
+            }
+          },
+          "403": { "description": "Admin privileges required" },
+          "404": { "description": "Employee not found" }
+        }
+      }
+    },
+    "/employees/{id}/skills": {
+      "post": {
+        "tags": ["Employees"],
+        "summary": "Add a skill entry to an employee (Admin only)",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["name", "category", "proficiency"],
+                "properties": {
+                  "name": { "type": "string" },
+                  "category": { "type": "string", "enum": ["BACKEND", "FRONTEND", "DEVOPS", "QA", "OTHER"] },
+                  "proficiency": { "type": "string", "enum": ["BEGINNER", "INTERMEDIATE", "ADVANCED"] }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Skill configured",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": { "type": "boolean" },
+                    "employee": { "$ref": "#/components/schemas/Employee" }
+                  }
+                }
+              }
+            }
+          },
+          "400": { "description": "Invalid body params or skill duplicate" }
+        }
+      }
+    },
+    "/employees/{id}/skills/{skillId}": {
+      "put": {
+        "tags": ["Employees"],
+        "summary": "Update an existing skill proficiency level (Admin only)",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" }
+          },
+          {
+            "name": "skillId",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["proficiency"],
+                "properties": {
+                  "proficiency": { "type": "string", "enum": ["BEGINNER", "INTERMEDIATE", "ADVANCED"] }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Skill updated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": { "type": "boolean" },
+                    "employee": { "$ref": "#/components/schemas/Employee" }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": ["Employees"],
+        "summary": "Remove a configured skill from employee profile (Admin only)",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" }
+          },
+          {
+            "name": "skillId",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Skill deleted",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": { "type": "boolean" },
+                    "employee": { "$ref": "#/components/schemas/Employee" }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/projects": {
+      "get": {
+        "tags": ["Projects"],
+        "summary": "Get all projects (Admin) or manager-owned projects (Manager)",
+        "responses": {
+          "200": {
+            "description": "List of projects returned",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": { "type": "boolean" },
+                    "projects": {
+                      "type": "array",
+                      "items": { "$ref": "#/components/schemas/Project" }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": ["Projects"],
+        "summary": "Create a new project (Admin only)",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["name", "startDate", "endDate", "status", "managerId"],
+                "properties": {
+                  "name": { "type": "string" },
+                  "description": { "type": "string" },
+                  "startDate": { "type": "string", "format": "date-time" },
+                  "endDate": { "type": "string", "format": "date-time" },
+                  "status": { "type": "string", "enum": ["PLANNED", "ACTIVE", "ON_HOLD"] },
+                  "managerId": { "type": "string" },
+                  "totalStoryPoints": { "type": "integer" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Project created successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": { "type": "boolean" },
+                    "project": { "$ref": "#/components/schemas/Project" }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/projects/{id}": {
+      "get": {
+        "tags": ["Projects"],
+        "summary": "Get dynamic project health details, overdue milestones, effort, allocations",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Health analysis details loaded successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": { "type": "boolean" },
+                    "analysis": {
+                      "type": "object",
+                      "properties": {
+                        "project": { "$ref": "#/components/schemas/Project" },
+                        "riskFlags": { "type": "array", "items": { "type": "string" } },
+                        "milestones": { "type": "array", "items": { "type": "object" } },
+                        "allocations": { "type": "array", "items": { "type": "object" } },
+                        "recentTimesheets": { "type": "array", "items": { "type": "object" } }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": ["Projects"],
+        "summary": "Update project details (Admin only)",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": { "type": "string" },
+                  "description": { "type": "string" },
+                  "startDate": { "type": "string", "format": "date-time" },
+                  "endDate": { "type": "string", "format": "date-time" },
+                  "status": { "type": "string", "enum": ["PLANNED", "ACTIVE", "ON_HOLD", "COMPLETED"] },
+                  "managerId": { "type": "string" },
+                  "totalStoryPoints": { "type": "integer" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Project updated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": { "type": "boolean" },
+                    "project": { "$ref": "#/components/schemas/Project" }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/projects/{id}/risk-summary-ai": {
+      "post": {
+        "tags": ["Projects"],
+        "summary": "Generate AI project risk text summary analysis based on milestones and log status",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "AI analysis summary generated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": { "type": "boolean" },
+                    "summary": { "type": "string" }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/projects/{id}/milestones": {
+      "post": {
+        "tags": ["Projects"],
+        "summary": "Create a new milestone on a project (Admin only)",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["title", "dueDate", "storyPoints"],
+                "properties": {
+                  "title": { "type": "string" },
+                  "dueDate": { "type": "string", "format": "date-time" },
+                  "storyPoints": { "type": "integer" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Milestone added",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": { "type": "boolean" },
+                    "project": { "$ref": "#/components/schemas/Project" }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/projects/{id}/milestones/{milestoneId}": {
+      "put": {
+        "tags": ["Projects"],
+        "summary": "Update status of an existing project milestone (Admin only)",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" }
+          },
+          {
+            "name": "milestoneId",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["status"],
+                "properties": {
+                  "status": { "type": "string", "enum": ["NOT_STARTED", "IN_PROGRESS", "DONE"] }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Milestone status updated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": { "type": "boolean" },
+                    "project": { "$ref": "#/components/schemas/Project" }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/allocations": {
+      "get": {
+        "tags": ["Allocations"],
+        "summary": "Get resource allocations",
+        "parameters": [
+          {
+            "name": "employeeId",
+            "in": "query",
+            "schema": { "type": "string" },
+            "description": "Filter by employee ID"
+          },
+          {
+            "name": "projectId",
+            "in": "query",
+            "schema": { "type": "string" },
+            "description": "Filter by project ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Allocations list returned",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": { "type": "boolean" },
+                    "allocations": {
+                      "type": "array",
+                      "items": { "$ref": "#/components/schemas/Allocation" }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": ["Allocations"],
+        "summary": "Allocate employee to a project (enforces 100% max daily capacity limits)",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["employeeId", "projectId", "utilisationPercent", "fromDate", "toDate"],
+                "properties": {
+                  "employeeId": { "type": "string" },
+                  "projectId": { "type": "string" },
+                  "utilisationPercent": { "type": "integer" },
+                  "fromDate": { "type": "string", "format": "date-time" },
+                  "toDate": { "type": "string", "format": "date-time" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Allocation created successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": { "type": "boolean" },
+                    "allocation": { "$ref": "#/components/schemas/Allocation" }
+                  }
+                }
+              }
+            }
+          },
+          "400": { "description": "Invalid date range or allocation overlap capacity exceeded" }
+        }
+      }
+    },
+    "/allocations/{id}/end": {
+      "post": {
+        "tags": ["Allocations"],
+        "summary": "End/terminate an active allocation (sets end date to today and recomputes status)",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Allocation ended today",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": { "type": "boolean" },
+                    "allocation": { "$ref": "#/components/schemas/Allocation" }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/users": {
+      "get": {
+        "tags": ["Users"],
+        "summary": "List all user accounts in the system (Admin only)",
+        "responses": {
+          "200": {
+            "description": "User accounts returned",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": { "type": "boolean" },
+                    "users": {
+                      "type": "array",
+                      "items": { "$ref": "#/components/schemas/User" }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": ["Users"],
+        "summary": "Create a new user login account (Admin only)",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["fullName", "email", "username", "password", "role"],
+                "properties": {
+                  "fullName": { "type": "string" },
+                  "email": { "type": "string" },
+                  "username": { "type": "string" },
+                  "password": { "type": "string" },
+                  "role": { "type": "string", "enum": ["ADMIN", "MANAGER", "EMPLOYEE"] }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "User account created successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": { "type": "boolean" },
+                    "user": { "$ref": "#/components/schemas/User" }
+                  }
+                }
+              }
+            }
+          },
+          "400": { "description": "Password criteria or unique check failed" }
+        }
+      }
+    },
+    "/users/{id}/reactivate": {
+      "post": {
+        "tags": ["Users"],
+        "summary": "Reactivate a blocked user account (Admin only)",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Account reactivated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": { "type": "boolean" },
+                    "user": { "$ref": "#/components/schemas/User" }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/users/{id}/deactivate": {
+      "post": {
+        "tags": ["Users"],
+        "summary": "Deactivate user login account, blocking further system access (Admin only)",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "User account deactivated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": { "type": "boolean" },
+                    "user": { "$ref": "#/components/schemas/User" }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/users/{id}/reset-password": {
+      "post": {
+        "tags": ["Users"],
+        "summary": "Administrative temporary password reset forcing change on next login (Admin only)",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["newPassword"],
+                "properties": {
+                  "newPassword": { "type": "string" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Password successfully reset",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": { "type": "boolean" },
+                    "user": { "$ref": "#/components/schemas/User" }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/settings": {
+      "get": {
+        "tags": ["Settings"],
+        "summary": "Get system parameters and keys configuration (Admin only)",
+        "responses": {
+          "200": {
+            "description": "Returns current configuration object",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": { "type": "boolean" },
+                    "settings": { "$ref": "#/components/schemas/SystemConfig" }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": ["Settings"],
+        "summary": "Update core system threshold properties or LLM settings (Admin only)",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "llmProvider": { "type": "string", "enum": ["Gemini", "Groq"] },
+                  "llmApiKey": { "type": "string" },
+                  "schedulerIntervalHours": { "type": "integer" },
+                  "maxWeeklyHours": { "type": "integer" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Configuration settings successfully updated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": { "type": "boolean" },
+                    "settings": { "$ref": "#/components/schemas/SystemConfig" }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
