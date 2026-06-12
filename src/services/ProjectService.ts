@@ -44,8 +44,15 @@ export class ProjectService {
     });
   }
 
-  async getAllProjects(): Promise<IProject[]> {
-    return this.projectRepo.findAllWithManager();
+  async getAllProjects(filters: { managerId?: string; projectIds?: string[] } = {}): Promise<IProject[]> {
+    const query: Record<string, unknown> = {};
+    if (filters.managerId) {
+      query.managerId = filters.managerId;
+    }
+    if (filters.projectIds) {
+      query._id = { $in: filters.projectIds };
+    }
+    return this.projectRepo.findAllWithManager(query);
   }
 
   async getProjectById(projectId: string): Promise<IProject | null> {
@@ -110,12 +117,20 @@ export class ProjectService {
       throw new AuthError(PROJECT_ERRORS.MILESTONE_DATE_RANGE, 400);
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const newMilestone: any = {
+    const newStoryPoints = storyPoints || 0;
+    const existingStoryPointsTotal = project.milestones.reduce(
+      (sum, m) => sum + (m.storyPoints || 0),
+      0
+    );
+    if (existingStoryPointsTotal + newStoryPoints > project.totalStoryPoints) {
+      throw new AuthError(PROJECT_ERRORS.MILESTONE_STORY_POINTS_EXCEEDED, 400);
+    }
+
+    const newMilestone = {
       title: title.trim(),
       dueDate: milestoneDue,
-      storyPoints: storyPoints || 0,
-      status: 'NOT_STARTED',
+      storyPoints: newStoryPoints,
+      status: 'NOT_STARTED' as const,
     };
     project.milestones.push(newMilestone);
 

@@ -24,6 +24,7 @@ export interface IResource extends Document {
   designation: ResourceDesignation;
   status: 'BENCH' | 'ALLOCATED' | 'INACTIVE';
   isActive: boolean;
+  timesheetAccessFrozen: boolean;
   skills: IResourceSkill[];
   createdAt: Date;
   updatedAt: Date;
@@ -37,10 +38,11 @@ const ResourceSkillSchema = new Schema<IResourceSkill>({
 
 const ResourceSchema = new Schema<IResource>({
   userId: { type: Schema.Types.ObjectId, ref: 'User', required: true, unique: true },
-  managerId: { type: Schema.Types.ObjectId, ref: 'User', default: null }, // nullable
+  managerId: { type: Schema.Types.ObjectId, ref: 'User', default: null },
   designation: { type: String, enum: DESIGNATIONS, required: true, trim: true },
   status: { type: String, enum: ['BENCH', 'ALLOCATED', 'INACTIVE'], default: 'BENCH' },
   isActive: { type: Boolean, default: true },
+  timesheetAccessFrozen: { type: Boolean, default: false },
   skills: [ResourceSkillSchema]
 }, {
   timestamps: true,

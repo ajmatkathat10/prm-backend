@@ -13,6 +13,8 @@ import projectRoutes from './routes/projects.js';
 import allocationRoutes from './routes/allocations.js';
 import userRoutes from './routes/users.js';
 import settingsRoutes from './routes/settings.js';
+import timesheetRoutes from './routes/timesheets.js';
+import aiRoutes from './routes/ai.js';
 import { SERVER_MESSAGES } from './constants/index.js';
 
 const app = express();
@@ -35,6 +37,10 @@ app.use('/api/projects', projectRoutes);
 app.use('/api/allocations', allocationRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/settings', settingsRoutes);
+app.use('/api/timesheets', timesheetRoutes);
+app.use('/api/ai', aiRoutes);
+
+import { Worker } from 'worker_threads';
 
 app.get('/', (_req, res) => {
   res.json({ message: SERVER_MESSAGES.ACTIVE, status: SERVER_MESSAGES.STATUS_OK });
@@ -45,6 +51,18 @@ async function bootstrap(): Promise<void> {
     await connectDatabase();
     app.listen(env.port, () => {
       console.log(SERVER_MESSAGES.RUNNING(env.port));
+    });
+
+    const workerPath = __filename.endsWith('.ts')
+      ? path.join(__dirname, 'schedulerWorker.ts')
+      : path.join(__dirname, 'schedulerWorker.js');
+
+    const worker = new Worker(workerPath);
+    worker.on('error', (err) => {
+      console.error('[SchedulerWorker] Error:', err);
+    });
+    worker.on('exit', (code) => {
+      console.log(`[SchedulerWorker] Exit code: ${code}`);
     });
   } catch (error) {
     console.error(SERVER_MESSAGES.START_FAILED, error);

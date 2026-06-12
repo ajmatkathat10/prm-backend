@@ -13,6 +13,8 @@ export interface ITimesheet extends Document {
   totalHours: number;
   submittedAt: Date | null;
   entries: ITimesheetEntry[];
+  reminderSentCount: number;
+  lastReminderSentAt: Date | null;
   createdAt: Date;
 }
 
@@ -28,13 +30,14 @@ const TimesheetSchema = new Schema<ITimesheet>({
   status: { type: String, enum: ['SUBMITTED', 'MISSED'], default: 'SUBMITTED' },
   totalHours: { type: Number, required: true, default: 0 },
   submittedAt: { type: Date, default: null },
-  entries: [TimesheetEntrySchema]
+  entries: [TimesheetEntrySchema],
+  reminderSentCount: { type: Number, default: 0 },
+  lastReminderSentAt: { type: Date, default: null }
 }, {
   timestamps: { createdAt: true, updatedAt: false },
   collection: 'timesheets'
 });
 
-// Compound unique index for resource and weekStart
 TimesheetSchema.index({ resourceId: 1, weekStart: 1 }, { unique: true });
 
 export const Timesheet = mongoose.model<ITimesheet>('Timesheet', TimesheetSchema);

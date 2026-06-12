@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { authMiddleware, AuthRequest } from '../middleware/auth.js';
-import { authService, AuthError } from '../services/AuthService.js';
+import { authService, AuthError, OtpRequiredError } from '../services/AuthService.js';
 import { AUTH_ERRORS, COMMON_ERRORS } from '../constants/index.js';
 
 const router = Router();
@@ -15,6 +15,27 @@ router.post('/login', async (req, res): Promise<void> => {
 
   try {
     const userPayload = await authService.login(username, password);
+    authService.issueSessionCookie(res, userPayload);
+    res.json({ success: true, user: userPayload });
+  } catch (error) {
+    if (error instanceof OtpRequiredError) {
+      res.status(202).json({ success: true, otpRequired: true, userId: error.userId });
+      return;
+    }
+    handleAuthError(error, res);
+  }
+});
+
+router.post('/verify-otp', async (req, res): Promise<void> => {
+  const { userId, otp } = req.body;
+
+  if (!userId || !otp) {
+    res.status(400).json({ error: 'User ID and OTP code are required' });
+    return;
+  }
+
+  try {
+    const userPayload = await authService.verifyOtp(userId, otp);
     authService.issueSessionCookie(res, userPayload);
     res.json({ success: true, user: userPayload });
   } catch (error) {
@@ -41,7 +62,7 @@ router.post('/change-password', authMiddleware, async (req: AuthRequest, res): P
   }
 
   try {
-    const updatedPayload = await authService.changePassword(userId, newPassword);
+    const updatedPayload = await authService.changePassword(userId, newPassword, req.user?.emailVerified);
     authService.issueSessionCookie(res, updatedPayload);
     res.json({ success: true, user: updatedPayload });
   } catch (error) {

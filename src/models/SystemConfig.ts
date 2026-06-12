@@ -1,7 +1,7 @@
 import mongoose, { Schema, Document } from 'mongoose';
 
 export interface ISystemConfig extends Document {
-  id: number; // For singleton enforcement
+  id: number;
   llmProvider: string;
   llmApiKey: string;
   schedulerIntervalHours: number;

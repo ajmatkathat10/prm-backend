@@ -17,7 +17,7 @@ export const env = {
   isProduction: process.env.NODE_ENV === 'production',
   session: {
     cookieName: 'session',
-    maxAgeMs: 1000 * 60 * 60 * 8, // 8 hours
+    maxAgeMs: 1000 * 60 * 60 * 8,
     expiresIn: '8h',
   },
 } as const;
