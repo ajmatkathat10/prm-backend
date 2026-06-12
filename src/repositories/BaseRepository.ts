@@ -1,9 +1,7 @@
 import { Document, Model } from 'mongoose';
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export type MongoFilter = Record<string, any>;
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export type MongoUpdate = Record<string, any>;
+export type MongoFilter = Record<string, unknown>;
+export type MongoUpdate = Record<string, unknown>;
 
 export interface IReadRepository<T> {
   findById(id: string): Promise<T | null>;
@@ -39,7 +37,7 @@ export abstract class BaseRepository<T extends Document> implements IRepository<
   }
 
   async updateById(id: string, data: MongoUpdate): Promise<T | null> {
-    return this.model.findByIdAndUpdate(id, data, { new: true }).exec();
+    return this.model.findByIdAndUpdate(id, data, { returnDocument: 'after' }).exec();
   }
 
   async deleteById(id: string): Promise<boolean> {

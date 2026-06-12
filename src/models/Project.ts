@@ -3,10 +3,10 @@ import mongoose, { Schema, Document, Types } from 'mongoose';
 export interface IMilestone {
   title: string;
   dueDate: Date;
-  storyPoints: number;  // BRD V4: story points per milestone
+  storyPoints: number;
   status: 'NOT_STARTED' | 'IN_PROGRESS' | 'DONE';
-  createdAt: Date;
-  updatedAt: Date;
+  createdAt?: Date;
+  updatedAt?: Date;
 }
 
 export interface IProject extends Document {
@@ -15,8 +15,8 @@ export interface IProject extends Document {
   startDate: Date;
   endDate: Date;
   status: 'PLANNED' | 'ACTIVE' | 'ON_HOLD' | 'COMPLETED';
-  managerId: Types.ObjectId; // User ref
-  totalStoryPoints: number;  // BRD V4: total SP for the project
+  managerId: Types.ObjectId;
+  totalStoryPoints: number;
   healthFlag: 'ON_TRACK' | 'ATTENTION' | 'AT_RISK';
   milestones: IMilestone[];
   createdAt: Date;

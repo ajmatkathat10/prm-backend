@@ -19,8 +19,7 @@ export class AllocationRepository extends BaseRepository<IAllocation> {
     });
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  async findAllWithDetails(filter: Record<string, any> = {}): Promise<IAllocation[]> {
+  async findAllWithDetails(filter: Record<string, unknown> = {}): Promise<IAllocation[]> {
     return this.model
       .find(filter)
       .populate({

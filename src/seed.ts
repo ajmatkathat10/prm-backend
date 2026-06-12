@@ -26,33 +26,28 @@ async function main() {
 
   console.log(SEED_MESSAGES.SEEDING_SKILLS);
   const skillsData: { name: string; category: 'BACKEND' | 'FRONTEND' | 'DEVOPS' | 'QA' | 'OTHER' }[] = [
-    // BACKEND
     { name: 'Java', category: 'BACKEND' },
     { name: 'Node.js', category: 'BACKEND' },
     { name: 'Python', category: 'BACKEND' },
     { name: 'Go', category: 'BACKEND' },
     { name: 'Spring Boot', category: 'BACKEND' },
     { name: 'Express.js', category: 'BACKEND' },
-    // FRONTEND
     { name: 'React', category: 'FRONTEND' },
     { name: 'Next.js', category: 'FRONTEND' },
     { name: 'TypeScript', category: 'FRONTEND' },
     { name: 'Vue.js', category: 'FRONTEND' },
     { name: 'Tailwind CSS', category: 'FRONTEND' },
     { name: 'HTML5 & CSS3', category: 'FRONTEND' },
-    // DEVOPS
     { name: 'Docker', category: 'DEVOPS' },
     { name: 'Kubernetes', category: 'DEVOPS' },
     { name: 'AWS', category: 'DEVOPS' },
     { name: 'GitHub Actions', category: 'DEVOPS' },
     { name: 'Terraform', category: 'DEVOPS' },
-    // QA
     { name: 'Jest', category: 'QA' },
     { name: 'Cypress', category: 'QA' },
     { name: 'Playwright', category: 'QA' },
     { name: 'Manual Testing', category: 'QA' },
     { name: 'Selenium', category: 'QA' },
-    // OTHER
     { name: 'Project Planning', category: 'OTHER' },
     { name: 'Scrum Master', category: 'OTHER' },
     { name: 'Technical Writing', category: 'OTHER' },
@@ -65,83 +60,16 @@ async function main() {
     skillsMap[createdSkill.name] = createdSkill;
   }
 
-  // 4. Seed Users
   console.log(SEED_MESSAGES.SEEDING_USERS);
-  // Password is 'Admin@1234'
   const passHash = '$2b$10$3Js0FcwLkjDiedTsqCcIP.kbmBU2puxGUT/W6H4WdiDhZULsJHFTO';
 
   await User.create({
     username: 'admin',
-    email: 'admin@techserve.com',
+    email: 'ajmat1130666@gmail.com',
     fullName: 'System Administrator',
     passwordHash: passHash,
     role: 'ADMIN',
     forcePasswordChange: true,
-  });
-
-  const userManager = await User.create({
-    username: 'manager',
-    email: 'manager@techserve.com',
-    fullName: 'Sarah Jenkins',
-    passwordHash: passHash,
-    role: 'MANAGER',
-    forcePasswordChange: true,
-  });
-
-  const userEmployee = await User.create({
-    username: 'anil_mehta',
-    email: 'anil.mehta@techserve.com',
-    fullName: 'Anil Mehta',
-    passwordHash: passHash,
-    role: 'EMPLOYEE',
-    forcePasswordChange: true,
-  });
-
-  // 5. Seed Resource Profiles (linked to User Accounts)
-  console.log(SEED_MESSAGES.SEEDING_EMPLOYEES);
-
-  await Resource.create({
-    userId: userEmployee._id,
-    designation: 'Senior Software Engineer',
-    status: 'BENCH',
-    skills: [
-      { skillId: skillsMap['Java']._id, proficiency: 'ADVANCED', addedAt: new Date() },
-      { skillId: skillsMap['Spring Boot']._id, proficiency: 'ADVANCED', addedAt: new Date() },
-      { skillId: skillsMap['AWS']._id, proficiency: 'INTERMEDIATE', addedAt: new Date() }
-    ]
-  });
-
-  // 6. Seed Projects
-  console.log(SEED_MESSAGES.SEEDING_PROJECTS);
-  await Project.create({
-    name: 'Alpha Portal',
-    description: 'Redevelopment of the main customer facing portal using Next.js.',
-    startDate: new Date('2026-06-01'),
-    endDate: new Date('2026-12-31'),
-    status: 'ACTIVE',
-    managerId: userManager._id,
-    healthFlag: 'ON_TRACK',
-    totalStoryPoints: 120,
-    milestones: [
-      { title: 'UI Designs & Prototyping', dueDate: new Date('2026-07-15'), status: 'IN_PROGRESS', storyPoints: 30 },
-      { title: 'API Integration', dueDate: new Date('2026-09-30'), status: 'NOT_STARTED', storyPoints: 50 },
-      { title: 'UAT Sign-off', dueDate: new Date('2026-11-30'), status: 'NOT_STARTED', storyPoints: 40 }
-    ]
-  });
-
-  await Project.create({
-    name: 'Beta CRM',
-    description: 'Migration of custom internal CRM databases to cloud-managed servers.',
-    startDate: new Date('2026-07-01'),
-    endDate: new Date('2027-02-28'),
-    status: 'PLANNED',
-    managerId: userManager._id,
-    healthFlag: 'ON_TRACK',
-    totalStoryPoints: 80,
-    milestones: [
-      { title: 'Schema Finalization', dueDate: new Date('2026-08-15'), status: 'NOT_STARTED', storyPoints: 35 },
-      { title: 'Data Extraction', dueDate: new Date('2026-10-31'), status: 'NOT_STARTED', storyPoints: 45 }
-    ]
   });
 
   console.log(SEED_MESSAGES.COMPLETED);
