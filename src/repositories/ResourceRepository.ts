@@ -28,7 +28,7 @@ export class ResourceRepository extends BaseRepository<IResource> {
   }
 
   override async updateById(id: string, data: MongoUpdate): Promise<IResource | null> {
-    return this.model.findByIdAndUpdate(id, data, { new: true })
+    return this.model.findByIdAndUpdate(id, data, { returnDocument: 'after' })
       .populate('skills.skillId')
       .populate('userId', 'fullName email username role')
       .exec();

@@ -6,8 +6,8 @@ export class ProjectRepository extends BaseRepository<IProject> {
     super(Project);
   }
 
-  async findAllWithManager(): Promise<IProject[]> {
-    return this.model.find().populate('managerId', 'username email').exec();
+  async findAllWithManager(filter: Record<string, unknown> = {}): Promise<IProject[]> {
+    return this.model.find(filter).populate('managerId', 'username email').exec();
   }
 
   async findByIdWithManager(id: string): Promise<IProject | null> {

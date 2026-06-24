@@ -9,6 +9,7 @@ export const USER_ERRORS = {
   EMAIL_IN_USE: 'Email is already in use',
   NOT_FOUND: 'User not found',
   DEACTIVATE_SELF: 'An administrator cannot deactivate their own account',
+  INVALID_EMAIL: 'Invalid email format',
 } as const;
 
 export const PROJECT_ERRORS = {
@@ -21,6 +22,7 @@ export const PROJECT_ERRORS = {
   MILESTONE_DATE_RANGE: 'Milestone due date must fall within the project duration',
   MILESTONE_STATUS_REQUIRED: 'Milestone status is required',
   MILESTONE_NOT_FOUND: 'Milestone not found',
+  MILESTONE_STORY_POINTS_EXCEEDED: 'Total milestone story points cannot exceed the project total story points',
 } as const;
 
 export const RESOURCE_ERRORS = {
@@ -63,4 +65,10 @@ export const SEED_MESSAGES = {
   SEEDING_PROJECTS: 'Seeding projects...',
   COMPLETED: 'Seeding completed successfully!',
   FAILED: 'Seeding failed with error:',
+} as const;
+
+export const PROFICIENCY_RANK: Record<string, number> = {
+  'BEGINNER': 1,
+  'INTERMEDIATE': 2,
+  'ADVANCED': 3
 } as const;

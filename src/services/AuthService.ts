@@ -5,6 +5,7 @@ import { IReadRepository, IWriteRepository } from '../repositories/BaseRepositor
 import { IUser } from '../models/User.js';
 import { env } from '../config/env.js';
 import { AUTH_ERRORS } from '../constants/index.js';
+import { emailService } from './EmailService.js';
 
 export interface TokenPayload {
   id: string;
@@ -12,6 +13,7 @@ export interface TokenPayload {
   email: string;
   role: 'ADMIN' | 'MANAGER' | 'EMPLOYEE';
   forcePasswordChange: boolean;
+  emailVerified?: boolean;
 }
 
 export interface AuthResult {
@@ -34,7 +36,14 @@ export function validatePasswordStrength(password: string): string | null {
   if (!/[0-9]/.test(password)) {
     return AUTH_ERRORS.PASSWORD_NO_NUMBER;
   }
-  return null; // null means valid
+  return null;
+}
+
+export class OtpRequiredError extends Error {
+  constructor(public readonly userId: string) {
+    super('OTP_REQUIRED');
+    this.name = 'OtpRequiredError';
+  }
 }
 
 export class AuthService {
@@ -55,10 +64,63 @@ export class AuthService {
       throw new AuthError(AUTH_ERRORS.INVALID_CREDENTIALS, 401);
     }
 
+    if (user.forcePasswordChange) {
+      const otp = String(100000 + Math.floor(Math.random() * 900000));
+      await this.userRepo.updateById(user._id.toString(), {
+        otpCode: otp,
+        otpExpiresAt: new Date(Date.now() + 10 * 60 * 1000),
+      });
+
+      await emailService.sendEmail(
+        user.email,
+        'Your OTP Verification Code',
+        `Hi ${user.fullName},\n\nYour OTP verification code for PRM first-login is: ${otp}\n\nThis code is valid for 10 minutes.\n\nBest regards,\nPRM System`
+      );
+
+      throw new OtpRequiredError(user._id.toString());
+    }
+
     return buildTokenPayload(user);
   }
 
-  async changePassword(userId: string, newPassword: string): Promise<TokenPayload> {
+  async verifyOtp(userId: string, code: string): Promise<TokenPayload> {
+    const user = await this.userRepo.findById(userId);
+    if (!user) {
+      throw new AuthError(AUTH_ERRORS.USER_NOT_FOUND, 404);
+    }
+
+    if (!user.forcePasswordChange) {
+      throw new AuthError('OTP verification not required for this user', 400);
+    }
+
+    if (!user.otpCode || user.otpCode !== code) {
+      throw new AuthError('Invalid verification code', 400);
+    }
+
+    if (!user.otpExpiresAt || user.otpExpiresAt < new Date()) {
+      throw new AuthError('Verification code has expired', 400);
+    }
+
+    await this.userRepo.updateById(userId, {
+      otpCode: null,
+      otpExpiresAt: null
+    });
+
+    const payload = buildTokenPayload(user);
+    payload.emailVerified = true;
+    return payload;
+  }
+
+  async changePassword(userId: string, newPassword: string, emailVerifiedFromToken?: boolean): Promise<TokenPayload> {
+    const user = await this.userRepo.findById(userId);
+    if (!user) {
+      throw new AuthError(AUTH_ERRORS.USER_NOT_FOUND, 404);
+    }
+
+    if (user.forcePasswordChange && !emailVerifiedFromToken) {
+      throw new AuthError('Email verification is required before changing password', 400);
+    }
+
     const validationError = validatePasswordStrength(newPassword);
     if (validationError) {
       throw new AuthError(validationError, 400);

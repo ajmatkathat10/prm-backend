@@ -3,14 +3,13 @@ import { userRepository } from '../repositories/UserRepository.js';
 import { skillRepository } from '../repositories/SkillRepository.js';
 import { allocationRepository } from '../repositories/AllocationRepository.js';
 import { IResource } from '../models/Resource.js';
+import { Timesheet } from '../models/Timesheet.js';
 import { AuthError } from './AuthService.js';
 import mongoose from 'mongoose';
 import { RESOURCE_ERRORS } from '../constants/index.js';
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export function serializeResource(resource: IResource): any {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const user = resource.userId as any; // populated User
+export function serializeResource(resource: IResource): Record<string, unknown> {
+  const user = resource.userId as unknown as { _id?: string; fullName?: string; email?: string };
   return {
     _id: resource._id,
     userId: user?._id || resource.userId,
@@ -19,6 +18,7 @@ export function serializeResource(resource: IResource): any {
     designation: resource.designation,
     status: resource.status,
     isActive: resource.isActive,
+    timesheetAccessFrozen: resource.timesheetAccessFrozen,
     skills: resource.skills,
     createdAt: resource.createdAt,
     updatedAt: resource.updatedAt,
@@ -34,25 +34,28 @@ export class ResourceService {
     private readonly allocationRepo: typeof allocationRepository
   ) { }
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  async getAllResources(filters: { status?: string }): Promise<any[]> {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const query: Record<string, any> = {};
+  async getAllResources(filters: { status?: string; managerId?: string }): Promise<Record<string, unknown>[]> {
+    const query: Record<string, unknown> = {};
     if (filters.status) {
       query.status = filters.status;
+    }
+    if (filters.managerId) {
+      query.managerId = filters.managerId;
     }
     const list = await this.resourceRepo.findAll(query);
     return list.map(serializeResource);
   }
-
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  async getResourceById(id: string): Promise<any | null> {
+  async getResourceById(id: string): Promise<Record<string, unknown> | null> {
     const resource = await this.resourceRepo.findById(id);
     return resource ? serializeResource(resource) : null;
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  async deactivateResource(resourceId: string, requestingUserId?: string): Promise<any> {
+  async getResourceByUserId(userId: string): Promise<Record<string, unknown> | null> {
+    const resource = await this.resourceRepo.findByUserId(userId);
+    return resource ? serializeResource(resource) : null;
+  }
+
+  async deactivateResource(resourceId: string, requestingUserId?: string): Promise<Record<string, unknown>> {
     const resource = await this.resourceRepo.findById(resourceId);
     if (!resource) {
       throw new AuthError(RESOURCE_ERRORS.NOT_FOUND, 404);
@@ -89,8 +92,7 @@ export class ResourceService {
     skillName: string,
     category: 'BACKEND' | 'FRONTEND' | 'DEVOPS' | 'QA' | 'OTHER',
     proficiency: 'BEGINNER' | 'INTERMEDIATE' | 'ADVANCED'
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  ): Promise<any> {
+  ): Promise<Record<string, unknown>> {
     if (!skillName || !category || !proficiency) {
       throw new AuthError(RESOURCE_ERRORS.SKILL_REQUIRED_FIELDS, 400);
     }
@@ -135,8 +137,7 @@ export class ResourceService {
     resourceId: string,
     skillId: string,
     proficiency: 'BEGINNER' | 'INTERMEDIATE' | 'ADVANCED'
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  ): Promise<any> {
+  ): Promise<Record<string, unknown>> {
     const resource = await this.resourceRepo.findById(resourceId);
     if (!resource) {
       throw new AuthError(RESOURCE_ERRORS.NOT_FOUND, 404);
@@ -161,8 +162,7 @@ export class ResourceService {
     return serializeResource(updatedResource!);
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  async removeResourceSkill(resourceId: string, skillId: string): Promise<any> {
+  async removeResourceSkill(resourceId: string, skillId: string): Promise<Record<string, unknown>> {
     const resource = await this.resourceRepo.findById(resourceId);
     if (!resource) {
       throw new AuthError(RESOURCE_ERRORS.NOT_FOUND, 404);
@@ -185,8 +185,7 @@ export class ResourceService {
     return serializeResource(updatedResource!);
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  async assignManager(resourceUserId: string, managerUserId: string): Promise<any> {
+  async assignManager(resourceUserId: string, managerUserId: string): Promise<Record<string, unknown>> {
     if (!resourceUserId || !managerUserId) {
       throw new AuthError(RESOURCE_ERRORS.ASSIGN_REQUIRED_FIELDS, 400);
     }
@@ -213,6 +212,25 @@ export class ResourceService {
     });
 
     return serializeResource(updatedResource!);
+  }
+
+  async restoreTimesheetAccess(resourceId: string): Promise<Record<string, unknown>> {
+    const resource = await this.resourceRepo.findById(resourceId);
+    if (!resource) {
+      throw new AuthError(RESOURCE_ERRORS.NOT_FOUND, 404);
+    }
+
+    await this.resourceRepo.updateById(resourceId, {
+      timesheetAccessFrozen: false
+    });
+
+    await Timesheet.updateMany(
+      { resourceId: resource._id, status: 'MISSED' },
+      { $set: { reminderSentCount: 0, lastReminderSentAt: null } }
+    );
+
+    const updated = await this.resourceRepo.findById(resourceId);
+    return serializeResource(updated!);
   }
 }
 

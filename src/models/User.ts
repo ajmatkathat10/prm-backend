@@ -8,6 +8,8 @@ export interface IUser extends Document {
   role: 'ADMIN' | 'MANAGER' | 'EMPLOYEE';
   isActive: boolean;
   forcePasswordChange: boolean;
+  otpCode?: string | null;
+  otpExpiresAt?: Date | null;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -19,7 +21,9 @@ const UserSchema = new Schema<IUser>({
   passwordHash: { type: String, required: true },
   role: { type: String, enum: ['ADMIN', 'MANAGER', 'EMPLOYEE'], default: 'EMPLOYEE' },
   isActive: { type: Boolean, default: true },
-  forcePasswordChange: { type: Boolean, default: true }
+  forcePasswordChange: { type: Boolean, default: true },
+  otpCode: { type: String, default: null },
+  otpExpiresAt: { type: Date, default: null }
 }, {
   timestamps: true,
   collection: 'users'
