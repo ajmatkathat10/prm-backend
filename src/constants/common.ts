@@ -66,3 +66,9 @@ export const SEED_MESSAGES = {
   COMPLETED: 'Seeding completed successfully!',
   FAILED: 'Seeding failed with error:',
 } as const;
+
+export const PROFICIENCY_RANK: Record<string, number> = {
+  'BEGINNER': 1,
+  'INTERMEDIATE': 2,
+  'ADVANCED': 3
+} as const;

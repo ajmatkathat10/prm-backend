@@ -7,6 +7,8 @@ import { SystemConfig } from './models/SystemConfig.js';
 import { User } from './models/User.js';
 import { emailService } from './services/EmailService.js';
 import { llmService } from './services/LlmService.js';
+import { getMonday, getLastMonday } from './utils/date.js';
+import { SCHEDULER_RISK_PROMPT } from './prompts/index.js';
 
 interface IPopulatedUser {
   _id: string;
@@ -23,19 +25,28 @@ interface IPopulatedSkill {
   category: string;
 }
 
-function getMonday(d: Date): Date {
-  const date = new Date(d);
-  const day = date.getDay();
-  const diff = date.getDate() - day + (day === 0 ? -6 : 1);
-  const monday = new Date(date.setDate(diff));
-  monday.setHours(0, 0, 0, 0);
-  return monday;
+interface IPopulatedUserForWorker {
+  _id: string;
+  fullName: string;
+  email: string;
 }
 
-function getLastMonday(d: Date): Date {
-  const monday = getMonday(d);
-  monday.setDate(monday.getDate() - 7);
-  return monday;
+interface IPopulatedResourceForWorker {
+  _id: string;
+  userId: IPopulatedUserForWorker;
+  managerId?: IPopulatedUserForWorker | null;
+  isActive: boolean;
+  timesheetAccessFrozen: boolean;
+}
+
+interface IPopulatedTimesheetForWorker {
+  _id: string;
+  resourceId: IPopulatedResourceForWorker;
+  weekStart: Date;
+  status: string;
+  reminderSentCount: number;
+  lastReminderSentAt: Date | null;
+  save(): Promise<unknown>;
 }
 
 async function sendProjectAtRiskAlert(proj: IProject, reason: string, maxHours: number): Promise<void> {
@@ -100,29 +111,13 @@ async function sendProjectAtRiskAlert(proj: IProject, reason: string, maxHours: 
       .map((r) => `- Name: ${r.name}, Designation: ${r.designation}, Free Hours: ${r.freeHours}h/week, Skills: [${r.skills}]`)
       .join('\n');
 
-    const prompt = `
-You are an AI assistant helping a project manager resolve project risks.
-Project "${proj.name}" has been marked as AT_RISK.
-Description: ${proj.description || 'No description provided.'}
-Risk Reason: ${reason}
-
-Here are the key project milestones:
-${milestonesText}
-
-Below is the list of active team members who have free capacity this week:
-${resourcesText || 'No active team members with free capacity.'}
-
-Please perform two tasks:
-1. Provide a professional "AI Risk Summary" (a plain-English explanation of why the project is at risk based on the reason and milestones). Keep it concise (1-2 paragraphs).
-2. Recommend the top 2-3 employees from the available list who are best suited to help reduce this project's risk, explaining why their skills match the project needs.
-
-Format your output exactly as follows:
-### AI Risk Summary
-[Your summary here]
-
-### Suggested Help
-[Your recommendations here]
-`;
+    const prompt = SCHEDULER_RISK_PROMPT(
+      proj.name,
+      proj.description || '',
+      reason,
+      milestonesText,
+      resourcesText
+    );
 
     let llmResponse = '';
     try {
@@ -168,6 +163,15 @@ async function runScheduler(): Promise<void> {
   try {
     const today = new Date();
     const resources = await Resource.find();
+    const activeAllocations = await Allocation.find({ status: 'ACTIVE' });
+    const allocsByResource: Record<string, typeof activeAllocations> = {};
+    for (const a of activeAllocations) {
+      const rId = a.resourceId.toString();
+      if (!allocsByResource[rId]) {
+        allocsByResource[rId] = [];
+      }
+      allocsByResource[rId].push(a);
+    }
 
     for (const res of resources) {
       if (!res.isActive) {
@@ -178,12 +182,8 @@ async function runScheduler(): Promise<void> {
         continue;
       }
 
-      const activeAllocations = await Allocation.find({
-        resourceId: res._id,
-        status: 'ACTIVE',
-      });
-
-      const targetStatus = activeAllocations.length > 0 ? 'ALLOCATED' : 'BENCH';
+      const resActiveAllocs = allocsByResource[res._id.toString()] || [];
+      const targetStatus = resActiveAllocs.length > 0 ? 'ALLOCATED' : 'BENCH';
 
       if (res.status !== targetStatus) {
         res.status = targetStatus;
@@ -196,34 +196,63 @@ async function runScheduler(): Promise<void> {
 
     const activeResources = await Resource.find({ isActive: true });
     const limitDate = new Date(Date.now() - 8 * 7 * 24 * 60 * 60 * 1000);
+    const currentMonday = getMonday(today);
+    const currentSunday = new Date(currentMonday.getTime() + 6 * 24 * 60 * 60 * 1000);
+    currentSunday.setHours(23, 59, 59, 999);
+
+    const allAllocations = await Allocation.find({
+      status: 'ACTIVE',
+      fromDate: { $lte: currentSunday },
+      toDate: { $gte: limitDate }
+    });
+
+    const allocationsMap: Record<string, typeof allAllocations> = {};
+    for (const a of allAllocations) {
+      const rId = a.resourceId.toString();
+      if (!allocationsMap[rId]) {
+        allocationsMap[rId] = [];
+      }
+      allocationsMap[rId].push(a);
+    }
+
+    const allTimesheets = await Timesheet.find({
+      weekStart: { $gte: getMonday(limitDate) }
+    });
+
+    const timesheetsMap = new Set<string>();
+    for (const ts of allTimesheets) {
+      timesheetsMap.add(`${ts.resourceId.toString()}_${ts.weekStart.getTime()}`);
+    }
+
+    const newTimesheets = [];
 
     for (const res of activeResources) {
       const startLimit = new Date(Math.max(res.createdAt.getTime(), limitDate.getTime()));
       let weekStart = getMonday(startLimit);
-      const currentMonday = getMonday(new Date());
 
       while (weekStart < currentMonday) {
         const weekEnd = new Date(weekStart.getTime() + 6 * 24 * 60 * 60 * 1000);
         weekEnd.setHours(23, 59, 59, 999);
 
-        const allocs = await Allocation.find({
-          resourceId: res._id,
-          status: 'ACTIVE',
-          fromDate: { $lte: weekEnd },
-          toDate: { $gte: weekStart }
+        const resAllocs = allocationsMap[res._id.toString()] || [];
+        const hasAlloc = resAllocs.some(a => {
+          const aFrom = new Date(a.fromDate);
+          const aTo = new Date(a.toDate);
+          return aFrom <= weekEnd && aTo >= weekStart;
         });
 
-        if (allocs.length > 0) {
-          const ts = await Timesheet.findOne({ resourceId: res._id, weekStart });
-          if (!ts) {
-            await Timesheet.create({
+        if (hasAlloc) {
+          const key = `${res._id.toString()}_${weekStart.getTime()}`;
+          if (!timesheetsMap.has(key)) {
+            newTimesheets.push({
               resourceId: res._id,
-              weekStart,
+              weekStart: new Date(weekStart),
               status: 'MISSED',
               totalHours: 0,
               submittedAt: null,
               entries: []
             });
+            timesheetsMap.add(key);
           }
         }
 
@@ -231,21 +260,33 @@ async function runScheduler(): Promise<void> {
       }
     }
 
-    const missedTimesheets = await Timesheet.find({ status: 'MISSED' });
+    if (newTimesheets.length > 0) {
+      await Timesheet.insertMany(newTimesheets);
+    }
+
+    const missedTimesheets = await Timesheet.find({ status: 'MISSED' })
+      .populate({
+        path: 'resourceId',
+        populate: [
+          { path: 'userId' },
+          { path: 'managerId' }
+        ]
+      }) as unknown as IPopulatedTimesheetForWorker[];
+
     const todayMs = today.getTime();
     for (const ts of missedTimesheets) {
-      const res = await Resource.findById(ts.resourceId);
+      const res = ts.resourceId;
       if (!res || !res.isActive) {
         continue;
       }
 
       const daysDiff = Math.floor((todayMs - ts.weekStart.getTime()) / (24 * 60 * 60 * 1000));
-      const resUser = await User.findById(res.userId);
+      const resUser = res.userId;
       if (!resUser) {
         continue;
       }
 
-      const managerUser = res.managerId ? await User.findById(res.managerId) : null;
+      const managerUser = res.managerId;
 
       if (daysDiff >= 7 && ts.reminderSentCount === 0) {
         const subject = `Timesheet Submission Reminder - Week of ${ts.weekStart.toLocaleDateString()}`;
@@ -264,8 +305,7 @@ async function runScheduler(): Promise<void> {
         ts.lastReminderSentAt = today;
         await ts.save();
       } else if (daysDiff >= 9 && ts.reminderSentCount === 2) {
-        res.timesheetAccessFrozen = true;
-        await res.save();
+        await Resource.updateOne({ _id: res._id }, { timesheetAccessFrozen: true });
 
         const employeeSubject = `Timesheet Submission Access Frozen`;
         const employeeBody = `Hi ${resUser.fullName},\n\nYour timesheet submission access has been frozen because you did not submit your timesheet for the week starting ${ts.weekStart.toLocaleDateString()}. Please contact your manager ${managerUser ? managerUser.fullName : 'reporting manager'} to restore access.\n\nBest regards,\nPRM System`;
@@ -284,6 +324,30 @@ async function runScheduler(): Promise<void> {
     }
 
     const projects = await Project.find();
+    const lastMonday = getLastMonday(today);
+    const lastSunday = new Date(lastMonday.getTime() + 6 * 24 * 60 * 60 * 1000);
+    lastSunday.setHours(23, 59, 59, 999);
+
+    const allProjAllocations = await Allocation.find({
+      status: 'ACTIVE',
+      fromDate: { $lte: lastSunday },
+      toDate: { $gte: lastMonday }
+    });
+
+    const allocationsByProject: Record<string, typeof allProjAllocations> = {};
+    for (const a of allProjAllocations) {
+      const pId = a.projectId.toString();
+      if (!allocationsByProject[pId]) {
+        allocationsByProject[pId] = [];
+      }
+      allocationsByProject[pId].push(a);
+    }
+
+    const submittedTimesheets = await Timesheet.find({
+      weekStart: lastMonday,
+      status: 'SUBMITTED'
+    });
+
     for (const proj of projects) {
       const incompleteMilestones = proj.milestones.filter((m) => m.status !== 'DONE');
       let maxOverdueDays = 0;
@@ -298,26 +362,12 @@ async function runScheduler(): Promise<void> {
         }
       }
 
-      const lastMonday = getLastMonday(today);
-      const lastSunday = new Date(lastMonday.getTime() + 6 * 24 * 60 * 60 * 1000);
-      lastSunday.setHours(23, 59, 59, 999);
-
-      const activeAllocs = await Allocation.find({
-        projectId: proj._id,
-        status: 'ACTIVE',
-        fromDate: { $lte: lastSunday },
-        toDate: { $gte: lastMonday }
-      });
+      const activeAllocs = allocationsByProject[proj._id.toString()] || [];
 
       let expectedHours = 0;
       for (const a of activeAllocs) {
         expectedHours += (a.utilisationPercent / 100) * maxHours;
       }
-
-      const submittedTimesheets = await Timesheet.find({
-        weekStart: lastMonday,
-        status: 'SUBMITTED'
-      });
 
       let loggedHours = 0;
       for (const ts of submittedTimesheets) {
